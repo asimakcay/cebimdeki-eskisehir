@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+
+<script>
+/* One-time v24 migrate: cache-bust once, do NOT unregister SW forever */
+(function(){
+  const KEY='ce.force.v25';
+  try{
+    if(!sessionStorage.getItem(KEY)){
+      sessionStorage.setItem(KEY,'1');
+      const q=location.search||'';
+      if(!/[?&]v=25(?:&|$)/.test(q)){
+        const u=new URL(location.href);
+        u.searchParams.set('v','25');
+        u.searchParams.set('t',String(Date.now()));
+        location.replace(u.pathname + u.search + u.hash);
+        return;
+      }
+    }
+  }catch(e){}
+})();
+</script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#C41E3A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Cebimdeki Eskişehir · v25</title>
+<!-- Inter optional (non-blocking); primary stack is system-ui for offline -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"></noscript>
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+
+<!--
+  README
+  ──────
+  Cebimdeki Eskişehir — OtobEs26 hattı üzerinde 15 durak, GPS görevleri, Yol Oyunu.
+  Tek dosya PWA. Veri katmanı aşağıdaki DATA bloğunda, arayüz metinleri I18N bloğunda.
+
+  Kurulum:
+   - HTTPS veya localhost gerekir (GPS ve kamera için tarayıcı şartı).
+   - Manifest ve ikonlar bu dosyaya gömülü (data URI). Chrome/Android "Ana ekrana ekle" bunu tanır.
+   - Tam offline için service worker AYRI dosya olmak zorunda (tarayıcı kısıtı). Yanına sw.js koy:
+       self.addEventListener('install',e=>e.waitUntil(caches.open('ce-v2').then(c=>c.addAll(['./','./cebimdeki-eskisehir.html']))));
+       self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));
+     ve aşağıdaki registerSW() satırının yorumunu kaldır.
+   - Demo: Ben sekmesi → "Konum simülasyonu" aç → Keşfet'te bir durağa "Işınlan".
+
+  Depolama: localStorage (anahtar "ce.v2"). Fotoğraflar 640px / JPEG 0.6'ya sıkıştırılır, en fazla 30 adet.
+  Koordinatlar yaklaşıktır; sahada doğrulanmalı.
+-->
+<link id="manifestLink" rel="manifest" href="">
+
+<style>
+  /* Glass template (ref) + Eskişehir palette: kırmızı / siyah / Porsuk turkuaz / Odunpazarı beji */
+  :root{
+    --bg:#B8ECF5;
+    --card:rgba(255,255,255,.55);
+    --card-solid:rgba(255,255,255,.82);
+    --card2:rgba(255,255,255,.35);
+    --line:rgba(255,255,255,.65);
+    --red:#C41E3A;
+    --red-dark:#9B1530;
+    --black:#121212;
+    --turq:#2EC4B6;
+    --beige:#E8D5B7;
+    --amber:#F4A261;
+    --text:#121212;
+    --muted:#3A4548;
+    --dim:#5C6A6E;
+    --teal:var(--red);
+    --teal-dark:#9B1530;
+    --coral:var(--red);
+    --r:28px; --r-sm:18px; --fs:16px;
+    --shadow:0 18px 40px rgba(18,18,18,.12);
+    --glass:blur(22px) saturate(160%);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{font-size:var(--fs)}
+  body{
+    margin:0;
+    color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Inter",sans-serif;
+    line-height:1.5;
+    padding-bottom:calc(88px + env(safe-area-inset-bottom));
+    background:var(--bg);
+    min-height:100dvh;
+    overflow-x:hidden;
+    position:relative;
+  }
+  body::before{
+    content:"";
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(circle at 12% 18%, rgba(196,30,58,.55) 0 42px, transparent 43px),
+      radial-gradient(circle at 88% 12%, rgba(46,196,182,.55) 0 56px, transparent 57px),
+      radial-gradient(circle at 78% 72%, rgba(244,162,97,.55) 0 48px, transparent 49px),
+      radial-gradient(circle at 18% 78%, rgba(18,18,18,.35) 0 36px, transparent 37px),
+      radial-gradient(circle at 52% 40%, rgba(232,213,183,.7) 0 70px, transparent 71px),
+      radial-gradient(circle at 40% 88%, rgba(196,30,58,.35) 0 90px, transparent 91px),
+      radial-gradient(circle at 95% 45%, rgba(46,196,182,.4) 0 34px, transparent 35px);
+    filter:blur(2px);
+  }
+  body::after{
+    content:"";
+    position:fixed; inset:-10% -10%; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(closest-side at 20% 30%, rgba(196,30,58,.28), transparent 70%),
+      radial-gradient(closest-side at 85% 20%, rgba(46,196,182,.35), transparent 65%),
+      radial-gradient(closest-side at 70% 80%, rgba(244,162,97,.3), transparent 70%),
+      radial-gradient(closest-side at 10% 85%, rgba(18,18,18,.18), transparent 60%);
+    filter:blur(28px);
+  }
+  body.big{--fs:19px}
+  h1,h2,h3{margin:0;font-weight:800;line-height:1.15;letter-spacing:-.03em}
+  h1{font-size:1.7rem} h2{font-size:1.3rem} h3{font-size:1.05rem}
+  p{margin:0}
+  button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+  button:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+  .sr{position:absolute;left:-9999px}
+  .screen{display:none;padding:20px 18px 12px;max-width:560px;margin:0 auto;position:relative;z-index:1}
+  .screen.on{display:block}
+  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;font-size:.78rem;padding:6px 12px;
+    border-radius:999px;font-weight:700;
+    background:rgba(255,255,255,.45); color:var(--muted);
+    border:1px solid var(--line); backdrop-filter:var(--glass); -webkit-backdrop-filter:var(--glass);
+  }
+  .chip.teal{background:rgba(196,30,58,.14);color:var(--red);border-color:rgba(196,30,58,.25)}
+  .chip.coral{background:rgba(196,30,58,.18);color:var(--red-dark);border-color:rgba(196,30,58,.3)}
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--r);
+    padding:16px 16px;
+    margin-bottom:12px;
+    box-shadow:var(--shadow);
+    backdrop-filter:var(--glass);
+    -webkit-backdrop-filter:var(--glass);
+  }
+  .btn{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    min-height:54px;padding:0 18px;border-radius:999px;font-weight:800;font-size:1rem;width:100%;
+    transition:transform .08s, filter .15s; letter-spacing:.01em;
+  }
+  .btn:active{transform:scale(.98)}
+  .btn.teal{
+    background:linear-gradient(135deg,#C41E3A 0%,#E63950 55%,#9B1530 100%);
+    color:#fff; box-shadow:0 12px 28px rgba(196,30,58,.35);
+  }
+  .btn.coral{
+    background:linear-gradient(135deg,#121212,#3A3A3A);
+    color:#fff; box-shadow:0 12px 28px rgba(18,18,18,.28);
+  }
+  .btn.ghost{
+    background:rgba(255,255,255,.4); color:var(--text);
+    border:1px solid var(--line); backdrop-filter:var(--glass); -webkit-backdrop-filter:var(--glass);
+  }
+  .btn.sm{min-height:40px;width:auto;font-size:.9rem;padding:0 14px;border-radius:999px}
+  .row{display:flex;gap:10px;align-items:center}
+  .muted{color:var(--muted)} .dim{color:var(--dim)} .small{font-size:.85rem}
+  .banner{
+    background:linear-gradient(135deg,rgba(196,30,58,.92),rgba(46,196,182,.85));
+    color:#fff;border-radius:var(--r);padding:14px 16px;margin-bottom:12px;
+    display:none;align-items:center;gap:12px;
+    box-shadow:0 14px 32px rgba(196,30,58,.25);
+    border:1px solid rgba(255,255,255,.35);
+  }
+  .banner.on{display:flex}
+  .banner b{display:block}
+  .stop{display:flex;gap:12px;align-items:center;cursor:pointer;position:relative}
+  .stop.near{box-shadow:inset 4px 0 0 var(--red)}
+  .num{
+    width:40px;height:40px;border-radius:50%;
+    background:rgba(196,30,58,.12); color:var(--red);
+    display:flex;align-items:center;justify-content:center;font-weight:800;flex:none;
+    border:1px solid rgba(196,30,58,.2);
+  }
+  .num.done{background:linear-gradient(135deg,#C41E3A,#9B1530);color:#fff;border:0}
+  .stop .info{flex:1;min-width:0}
+  .stop .name{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fav{font-size:1.3rem;padding:6px;color:var(--dim)} .fav.on{color:var(--amber)}
+  .filters{display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px}
+  .filters button{
+    padding:9px 15px;border-radius:999px;font-weight:700;white-space:nowrap;
+    background:rgba(255,255,255,.45); border:1px solid var(--line); color:var(--muted);
+    backdrop-filter:var(--glass); -webkit-backdrop-filter:var(--glass);
+  }
+  .filters button[aria-pressed=true]{
+    background:var(--black); color:#fff; border-color:var(--black);
+  }
+  .hero{
+    height:170px;border-radius:var(--r);
+    background:linear-gradient(145deg,#C41E3A 0%,#9B1530 40%,#2EC4B6 100%);
+    display:flex;align-items:flex-end;padding:14px;position:relative;overflow:hidden;margin-bottom:12px;
+    box-shadow:var(--shadow); border:1px solid rgba(255,255,255,.4);
+  }
+  .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .hero .dist{
+    position:relative;background:rgba(255,255,255,.85);color:var(--black);font-weight:800;font-size:.85rem;
+    padding:6px 12px;border-radius:999px;backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.7);
+  }
+  .task{
+    display:flex;gap:12px;align-items:center;
+    background:rgba(255,255,255,.5); border:1px solid var(--line); border-radius:22px;
+    padding:14px; margin-bottom:10px; box-shadow:0 10px 24px rgba(18,18,18,.08);
+    backdrop-filter:var(--glass); -webkit-backdrop-filter:var(--glass);
+    transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  }
+  .task .ic{
+    width:48px;height:48px;border-radius:16px;display:flex;align-items:center;justify-content:center;
+    font-size:1.35rem;background:rgba(255,255,255,.55);flex:none;border:1px solid rgba(255,255,255,.7);
+  }
+  .task.open{border-color:rgba(196,30,58,.45); box-shadow:0 12px 28px rgba(196,30,58,.16)}
+  .task.open .ic{background:linear-gradient(135deg,#C41E3A,#E63950);color:#fff;border:0}
+  .task.done{border-color:rgba(46,196,182,.45)}
+  .task.done .ic{background:linear-gradient(135deg,#2EC4B6,#1FA896);color:#fff;border:0}
+  .task.lock{opacity:.62}
+  .task .t{flex:1}
+  .task .state{
+    font-size:.72rem;font-weight:800;padding:5px 11px;border-radius:999px;
+    background:rgba(18,18,18,.08);color:var(--muted);letter-spacing:.02em;
+  }
+  .task.open .state{background:var(--red);color:#fff}
+  .task.done .state{background:var(--turq);color:#fff}
+  .task.lock .state{background:rgba(18,18,18,.08);color:#6B7280}
+  .task.open{cursor:pointer}
+  .task.open:active{transform:scale(.99)}
+  .stamps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .stamp{
+    aspect-ratio:1;border-radius:22px;
+    background:rgba(255,255,255,.45);border:1px dashed rgba(18,18,18,.2);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    font-size:.75rem;color:var(--dim);text-align:center;padding:6px;position:relative;overflow:hidden;cursor:pointer;
+    backdrop-filter:var(--glass); -webkit-backdrop-filter:var(--glass);
+  }
+  .stamp.done{color:#fff;font-weight:700;border-style:solid;border-color:var(--red)}
+  .stamp.done img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.8}
+  .stamp.done span{position:relative;text-shadow:0 1px 4px #000}
+  .stamp.done::after{content:"";position:absolute;inset:6px;border:2px dashed #fff;border-radius:14px;transform:rotate(-6deg);opacity:.85}
+  .stamp.done .sticker{font-size:2rem;filter:drop-shadow(0 4px 8px rgba(196,30,58,.25));transform:rotate(-6deg);position:relative;z-index:1}
+  .stamp.half{color:var(--ink);font-weight:700;border-style:dashed;border-color:var(--teal);background:rgba(45,212,191,.12)}
+  .stamp.half img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.45}
+  .stamp.half span{position:relative}
+  .stamp.half .sticker{font-size:1.6rem;filter:grayscale(.2);opacity:.85;position:relative;z-index:1}
+  .stamp.half .half-mark{position:absolute;top:6px;right:8px;z-index:2;font-size:.7rem;font-weight:800;color:var(--teal);background:rgba(255,255,255,.85);padding:2px 6px;border-radius:999px}
+  .badges{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+  .badge{background:rgba(255,255,255,.5);border:1px solid var(--line);border-radius:18px;padding:12px 8px;text-align:center;backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass)}
+  .badge.lock{opacity:.4;filter:grayscale(1)}
+  .badge .ic{font-size:1.8rem;display:block}
+  .badge b{display:block;font-size:.78rem;margin-top:4px}
+  .metric{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .metric div{
+    background:rgba(255,255,255,.5);border:1px solid var(--line);border-radius:22px;padding:14px;
+    box-shadow:var(--shadow); backdrop-filter:var(--glass); -webkit-backdrop-filter:var(--glass);
+  }
+  .metric b{font-size:1.55rem;display:block;color:var(--red)}
+  .tabs{
+    display:flex;gap:6px;padding:5px;border-radius:999px;margin-bottom:14px;
+    background:rgba(255,255,255,.4); border:1px solid var(--line);
+    backdrop-filter:var(--glass); -webkit-backdrop-filter:var(--glass);
+  }
+  .tabs button{flex:1;padding:10px 4px;border-radius:999px;font-weight:800;color:var(--muted);font-size:.9rem}
+  .tabs button[aria-selected=true]{background:var(--black);color:#fff}
+  .q{font-size:1.15rem;font-weight:800;margin:6px 0 14px;min-height:3em}
+  .opts{display:grid;gap:8px}
+  .opts button{
+    background:rgba(255,255,255,.55);border-radius:18px;padding:14px;text-align:left;font-weight:700;
+    border:1px solid var(--line); backdrop-filter:var(--glass); -webkit-backdrop-filter:var(--glass);
+  }
+  .opts button.ok{border-color:var(--turq);background:rgba(46,196,182,.18)}
+  .opts button.no{border-color:var(--red);background:rgba(196,30,58,.12)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .answer{background:rgba(255,255,255,.45);border-radius:var(--r-sm);padding:12px;margin-top:10px;display:none;border:1px solid var(--line)}
+  .answer.on{display:block}
+  nav{
+    position:fixed;bottom:10px;left:12px;right:12px;
+    background:rgba(255,255,255,.42);
+    backdrop-filter:blur(20px) saturate(170%);
+    -webkit-backdrop-filter:blur(20px) saturate(170%);
+    border:1px solid rgba(255,255,255,.65);
+    border-radius:999px;
+    display:flex;
+    padding:8px 8px calc(8px + env(safe-area-inset-bottom));
+    z-index:15;
+    box-shadow:0 16px 40px rgba(18,18,18,.16);
+    max-width:560px;margin:0 auto;
+  }
+  nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.7rem;font-weight:800;color:var(--dim);padding:6px 0;border-radius:999px}
+  nav button span:first-child{font-size:1.35rem}
+  nav button[aria-current=page]{color:var(--red);background:rgba(196,30,58,.1)}
+  .overlay{
+    position:fixed;inset:0;background:rgba(18,18,18,.35);display:none;align-items:center;justify-content:center;
+    padding:20px;z-index:20;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  }
+  .overlay.on{display:flex}
+  .modal{
+    background:rgba(255,255,255,.72);border-radius:32px;padding:24px;max-width:400px;width:100%;text-align:center;
+    box-shadow:0 24px 60px rgba(0,0,0,.22); border:1px solid rgba(255,255,255,.7);
+    backdrop-filter:blur(24px) saturate(170%); -webkit-backdrop-filter:blur(24px) saturate(170%);
+  }
+  .modal .big-stamp{font-size:4rem;line-height:1;margin:6px 0;transform:rotate(-8deg);display:inline-block}
+  .modal.reward .big-stamp{animation:pop .4s cubic-bezier(.3,1.6,.5,1)}
+  @keyframes pop{from{transform:scale(.3) rotate(-30deg);opacity:0}to{transform:scale(1) rotate(-8deg);opacity:1}}
+  .ob-dots{display:flex;gap:6px;justify-content:center;margin:12px 0}
+  .ob-dots i{width:8px;height:8px;border-radius:50%;background:rgba(18,18,18,.15)}
+  .ob-dots i.on{background:var(--red)}
+  input[type=text]{
+    width:100%;font:inherit;padding:14px 16px;border-radius:999px;
+    border:1px solid rgba(255,255,255,.75); background:rgba(255,255,255,.45); color:var(--text);
+    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  }
+  input[type=text]:focus{border-color:var(--red);outline:none;background:rgba(255,255,255,.7)}
+  .toggle{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid rgba(18,18,18,.08)}
+  .toggle:last-child{border:0}
+  .sw{width:50px;height:30px;border-radius:999px;background:rgba(18,18,18,.15);position:relative;flex:none}
+  .sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+  .sw[aria-checked=true]{background:var(--red)} .sw[aria-checked=true]::after{left:23px}
+  .toast{
+    position:fixed;left:50%;bottom:110px;transform:translateX(-50%);
+    background:rgba(18,18,18,.88);color:#fff;padding:10px 16px;border-radius:999px;
+    font-weight:700;font-size:.9rem;display:none;z-index:30;max-width:90%;text-align:center;
+    border:1px solid rgba(255,255,255,.2);
+  }
+  .toast.on{display:block}
+  .empty{text-align:center;padding:30px 10px;color:var(--muted)}
+  .empty span{font-size:2.5rem;display:block;margin-bottom:8px}
+  .list-photo{width:56px;height:56px;border-radius:16px;object-fit:cover;flex:none;background:rgba(255,255,255,.4);border:1px solid var(--line)}
+  #camPlace,#camSelfie,#camGallery{
+    position:fixed;right:0;bottom:0;width:1px;height:1px;opacity:0;overflow:hidden;z-index:-1;
+  }
+  .card-fun{
+    background:rgba(46,196,182,.18); border-color:rgba(46,196,182,.35);
+  }
+  .card-legend{
+    background:rgba(244,162,97,.22); border-color:rgba(244,162,97,.45);
+  }
+  .card-legend .small:first-child{color:#9B4E12!important}
+  .card-dialect{
+    background:rgba(124,92,191,.16); border-color:rgba(180,140,255,.42);
+  }
+  .card-dialect .small:first-child{color:#5B3A9E!important}
+  .card-food{
+    background:rgba(46,160,90,.14); border-color:rgba(46,160,90,.38);
+  }
+  .card-food .small:first-child{color:#1F6B3A!important}
+  .card-look{
+    background:rgba(66,133,244,.12); border-color:rgba(66,133,244,.38);
+  }
+  .card-look .small:first-child{color:#1A4F9C!important}
+  #stopNextLine{margin-top:6px}
+  .secure-warn{
+    background:rgba(244,162,97,.28);border:1px solid rgba(244,162,97,.5);color:#5C3B00;
+    border-radius:22px;padding:12px 14px;margin-bottom:12px;font-size:.9rem;line-height:1.4;
+    backdrop-filter:var(--glass); -webkit-backdrop-filter:var(--glass);
+  }
+
+  /* 2026 year mark — soft watermark + glass brand strip (not a raw dump) */
+  .year-watermark{
+    position:fixed; left:0; right:0; bottom:64px; z-index:0; pointer-events:none;
+    display:flex; justify-content:center; opacity:.10;
+  }
+  .year-watermark img{
+    width:min(88vw,380px); height:auto;
+    filter:saturate(.9) contrast(1.05);
+    -webkit-mask-image:linear-gradient(to bottom, transparent 0%, #000 22%, #000 72%, transparent 100%);
+    mask-image:linear-gradient(to bottom, transparent 0%, #000 22%, #000 72%, transparent 100%);
+  }
+  .title-with-logo{display:flex;align-items:center;gap:8px;min-width:0}
+  .title-with-logo h1{flex:none}
+  .title-logo{
+    flex:none; width:72px; height:32px;
+    border-radius:9px; overflow:hidden;
+    opacity:.48;
+    border:1px solid rgba(255,255,255,.4);
+    background:rgba(255,255,255,.18);
+  }
+  .title-logo img{
+    display:block; width:100%; height:100%; object-fit:cover; object-position:center;
+  }
+  .mayor-card{overflow:hidden}
+  .mayor-brand{
+    margin:-16px -16px 14px;
+    padding:10px 14px 9px;
+    background:linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.12));
+    border-bottom:1px solid var(--line);
+  }
+  .mayor-brand img{
+    display:block; width:100%; max-height:56px; object-fit:contain;
+    opacity:.7; border-radius:12px;
+  }
+  .credit{text-align:center;margin:16px 0 8px;line-height:1.45}
+  .credit .dev{display:block;margin-top:4px;font-weight:700;color:var(--ink,#121212)}
+  .mayor-card .mayor-name{font-weight:800;font-size:1.05rem}
+  .mayor-card .mayor-role{color:var(--muted);font-size:.85rem;font-weight:700}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+</head>
+<body>
+
+<!-- ONBOARDING -->
+<div class="overlay" id="ob" role="dialog" aria-modal="true" aria-labelledby="obTitle">
+  <div class="modal" style="text-align:left">
+    <div id="obBody"></div>
+    <div class="ob-dots" id="obDots"></div>
+    <div class="row">
+      <button class="btn ghost sm" id="obSkip" data-i18n="skip">Atla</button>
+      <button class="btn teal" id="obNext" style="flex:1">Devam</button>
+    </div>
+  </div>
+</div>
+
+<!-- REWARD / GENERIC MODAL -->
+<div class="overlay" id="modal" role="dialog" aria-modal="true">
+  <div class="modal" id="modalBox"></div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- KEŞFET -->
+<section class="screen on" id="s-explore" aria-labelledby="h-explore">
+  <div class="top">
+    <div style="min-width:0;flex:1">
+      <div class="title-with-logo">
+        <h1 id="h-explore" data-i18n="explore">Keşfet</h1>
+        <span class="title-logo" title="2026 Eskişehir Yılı" aria-hidden="true">
+          <img src="assets/eskisehir-yili-2026.png" alt="" decoding="async">
+        </span>
+      </div>
+      <p id="themeVer" class="small" style="margin-top:4px;font-weight:800;color:#C41E3A">Tema v25 · kalıcılık</p>
+      <p class="muted small" id="explSub"></p>
+    </div>
+    <span class="chip" id="gpsChip">…</span>
+  </div>
+  <div class="banner" id="nearBanner" role="status">
+    <span style="font-size:1.6rem">📍</span>
+    <div style="flex:1"><b id="nearName"></b><span class="small" id="nearText"></span></div>
+    <button class="btn sm" style="background:#fff;color:#0F6E56" id="nearGo" data-i18n="open">Aç</button>
+  </div>
+  <div class="card" id="nextCard" style="display:none">
+    <p class="small muted" data-i18n="nextStop">Sıradaki durak</p>
+    <div class="row" style="justify-content:space-between;align-items:center;gap:8px">
+      <b id="nextName"></b>
+      <div class="row" style="gap:6px;flex:none">
+        <span class="chip" id="nextDist"></span>
+        <span class="chip teal" id="nextWalk"></span>
+      </div>
+    </div>
+  </div>
+  <div class="filters" role="group" aria-label="filtre">
+    <button data-f="all" aria-pressed="true" data-i18n="fAll">Tümü</button>
+    <button data-f="todo" aria-pressed="false" data-i18n="fTodo">Kalan</button>
+    <button data-f="done" aria-pressed="false" data-i18n="fDone">Tamamlanan</button>
+    <button data-f="fav" aria-pressed="false" data-i18n="fFav">Favoriler</button>
+  </div>
+  <div id="stopList"></div>
+  <p class="small dim credit" style="padding-bottom:8px">
+    <span data-i18n="about">Özel Atayurt Okulları · TÜBİTAK 2204-B · 2026 Eskişehir Yılı</span>
+    <span class="dev" data-i18n="developer">Geliştirici: Asım Akçay</span>
+  </p>
+</section>
+
+<!-- DURAK DETAY -->
+<section class="screen" id="s-stop" aria-labelledby="stopName">
+  <div class="top">
+    <button class="btn ghost sm" id="stopBack">← <span data-i18n="back">Geri</span></button>
+    <span class="chip" id="stopIdx"></span>
+  </div>
+  <div class="hero" id="stopHero"><span class="dist" id="stopDist"></span></div>
+  <div class="row" style="justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+    <div><h2 id="stopName"></h2><p class="muted small" id="stopTag"></p></div>
+    <div class="row" style="gap:2px">
+      <button class="fav" id="stopFav" aria-label="favori">★</button>
+      <button class="fav" id="stopTts" aria-label="sesli oku" style="color:var(--teal)">🔊</button>
+    </div>
+  </div>
+  <div class="card"><p class="small" style="color:var(--teal);font-weight:700" data-i18n="fact">Bilgi</p><p id="stopFact" style="margin-top:4px"></p></div>
+  <div class="card card-fun"><p class="small" style="color:var(--coral);font-weight:700" data-i18n="fun">Biliyor muydun?</p><p id="stopFun" style="margin-top:4px"></p></div>
+  <div class="card card-legend" id="stopLegendBox" style="display:none"><p class="small" style="color:var(--amber);font-weight:800;letter-spacing:.04em;text-transform:uppercase" data-i18n="legend">Efsane / anlatı</p><p id="stopLegend" style="margin-top:6px"></p><p class="small muted" id="stopLegendNote" style="margin-top:8px"></p></div>
+  <div class="card card-dialect" id="stopDialectBox" style="display:none" aria-hidden="true"><p class="small" style="color:#5B3A9E;font-weight:800;letter-spacing:.04em;text-transform:uppercase" data-i18n="dialect">Eskişehir Ağzı</p><p id="stopDialect" style="margin-top:6px"></p><p class="small muted" id="stopDialectNote" style="margin-top:8px"></p></div>
+  <div class="card card-food" id="stopFoodBox" style="display:none" aria-hidden="true"><p class="small" style="color:#1F6B3A;font-weight:800;letter-spacing:.04em;text-transform:uppercase" data-i18n="foodTip">Yakında ye</p><p id="stopFood" style="margin-top:6px"></p></div>
+  <div class="card card-look" id="stopLookBox" style="display:none" aria-hidden="true"><p class="small" style="color:#1A4F9C;font-weight:800;letter-spacing:.04em;text-transform:uppercase" data-i18n="lookTip">Ne tarafa bak</p><p id="stopLook" style="margin-top:6px"></p></div>
+  <button class="btn ghost" id="guideBtn" style="margin:8px 0 4px" data-i18n="guidePlay">🎧 Sesli rehber</button>
+  <p class="small muted" style="margin:14px 0 8px"><span data-i18n="tasks">Görevler</span> · <span id="stopTaskCount"></span></p>
+  <div id="taskList"></div>
+  <input type="file" accept="image/*" capture="environment" id="camPlace" tabindex="-1">
+  <input type="file" accept="image/*" capture="user" id="camSelfie" tabindex="-1">
+  <input type="file" accept="image/*" id="camGallery" tabindex="-1">
+  <button class="btn teal" id="stopAction" style="margin-top:8px"></button>
+  <p class="small dim" style="margin-top:10px" id="stopSource"></p>
+</section>
+
+<!-- PASAPORT -->
+<section class="screen" id="s-passport" aria-labelledby="h-pass">
+  <div class="top"><h1 id="h-pass" data-i18n="passport">Pasaport</h1><button class="btn ghost sm" id="shareBtn" data-i18n="share">Paylaş</button></div>
+  <div class="metric">
+    <div><span class="small muted" data-i18n="points">Puan</span><b id="pPoints">0</b></div>
+    <div><span class="small muted" data-i18n="stops">Durak</span><b id="pStops">0/15</b></div>
+  </div>
+  <div class="stamps" id="stampGrid"></div>
+  <div class="empty" id="stampEmpty" style="display:none"><span>🎫</span><p data-i18n="emptyPass">İlk damga Otogar'da seni bekliyor.</p></div>
+  <p class="small muted" style="margin:16px 0 8px" data-i18n="badges">Rozetler</p>
+  <div class="badges" id="badgeRow"></div>
+</section>
+
+<!-- OTOBÜS / YOL OYUNU -->
+<section class="screen" id="s-bus" aria-labelledby="h-bus">
+  <div class="top"><div><h1 id="h-bus" data-i18n="roadGame">Yol Oyunu</h1><p class="muted small" data-i18n="busMode">Otobüs Modu</p></div><span class="chip teal" id="gameScore">0</span></div>
+  <div class="tabs" role="tablist">
+    <button role="tab" data-g="riddle" aria-selected="true" data-i18n="gRiddle">Bilmece</button>
+    <button role="tab" data-g="truth" aria-selected="false" data-i18n="gTruth">Gerçek mi?</button>
+    <button role="tab" data-g="idiom" aria-selected="false" data-i18n="gIdiom">Eskişehir Ağzı</button>
+  </div>
+  <div class="card" id="gameCard"></div>
+</section>
+
+<!-- BEN -->
+<section class="screen" id="s-me" aria-labelledby="h-me">
+  <div class="top"><h1 id="h-me" data-i18n="me">Ben</h1></div>
+  <div class="card">
+    <label class="small muted" for="nameIn" data-i18n="yourName">Adın</label>
+    <div class="row" style="margin-top:6px"><input type="text" id="nameIn" maxlength="24" placeholder="Ayşe"><button class="btn teal sm" id="nameSave" data-i18n="save">Kaydet</button></div>
+  </div>
+  <div class="metric">
+    <div><span class="small muted" data-i18n="points">Puan</span><b id="mPoints">0</b></div>
+    <div><span class="small muted" data-i18n="photos">Fotoğraf</span><b id="mPhotos">0</b></div>
+  </div>
+  <div class="card">
+    <div class="toggle"><span data-i18n="lang">Dil / Language</span><button class="btn ghost sm" id="langBtn">EN</button></div>
+    <div class="toggle"><span data-i18n="bigText">Büyük yazı</span><button class="sw" role="switch" aria-checked="false" id="bigSw" aria-label="büyük yazı"></button></div>
+    <div class="toggle"><span data-i18n="sim">Konum simülasyonu (demo)</span><button class="sw" role="switch" aria-checked="false" id="simSw" aria-label="simülasyon"></button></div>
+    <div class="toggle"><span data-i18n="notifyNear">Durağa yaklaşınca bildirim</span><button class="sw" role="switch" aria-checked="false" id="notifySw" aria-label="bildirim"></button></div>
+    <p class="small muted" style="margin:0 0 8px;padding:0 2px" data-i18n="notifyHint">Uygulama açıkken çalışır</p>
+    <div class="toggle" id="installRow"><span data-i18n="install">Ana ekrana ekle</span><button class="btn ghost sm" id="installBtn" data-i18n="add">Ekle</button></div>
+    <div class="toggle" id="installDoneRow" style="display:none"><span data-i18n="installDone">Uygulama yüklü ✓</span><span aria-hidden="true">✓</span></div>
+    <div class="toggle"><span data-i18n="offlineReady">Çevrimdışı hazır</span><span class="chip teal" id="netChip">…</span></div>
+  </div>
+  <div class="card small muted" id="installHint" style="display:none" data-i18n="iosHint">iPhone'da: Paylaş → "Ana Ekrana Ekle".</div>
+  <div class="card" id="gpsDebug">
+    <p class="small muted" data-i18n="gpsDetail">Konum durumu</p>
+    <p class="small" id="gpsDetailText" style="margin-top:6px">—</p>
+  </div>
+  <button class="btn ghost" id="resetBtn" data-i18n="reset">İlerlemeyi sıfırla</button>
+  <div class="card mayor-card">
+    <div class="mayor-brand">
+      <img src="assets/eskisehir-yili-2026.png" alt="2026 Eskişehir Yılı" decoding="async">
+    </div>
+    <p class="mayor-role" data-i18n="mayorRole">Eskişehir Büyükşehir Belediye Başkanı</p>
+    <p class="mayor-name">Ayşe Ünlüce</p>
+    <p class="small muted" style="margin-top:8px" data-i18n="mayorNote">2026 Eskişehir Yılı kimliğiyle şehrin kültür ve turizm hattı OtobEs26 bu uygulamada tanıtılır. Önceki başkan Yılmaz Büyükerşen (1999–2024), balmumu müzesinin kurucusudur.</p>
+  </div>
+  <p class="small dim credit" id="appCredit">
+    <span data-i18n="about">Özel Atayurt Okulları · TÜBİTAK 2204-B · 2026 Eskişehir Yılı</span>
+    <span class="dev" data-i18n="developer">Geliştirici: Asım Akçay</span>
+  </p>
+</section>
+
+<nav aria-label="ana menü">
+  <button data-nav="explore" aria-current="page"><span>🧭</span><span data-i18n="explore">Keşfet</span></button>
+  <button data-nav="passport"><span>🎫</span><span data-i18n="passport">Pasaport</span></button>
+  <button data-nav="bus"><span>🚌</span><span data-i18n="bus">Otobüs</span></button>
+  <button data-nav="me"><span>👤</span><span data-i18n="me">Ben</span></button>
+</nav>
+
+<script>
+/* ═══════════════════════ DATA ═══════════════════════ */
+const DATA = {
+  stops: [
+    {id:"otogar",  lat:39.77536,lng:30.55214, tr:{name:"Otogar",photoPlace:"Otogar tabelasını çek",photoSelfie:"Otogar önünde selfie",tag:"Hattın başlangıcı",fact:"OtobEs26 turistik ring hattı Otogar'dan kalkar; hafta sonu ve resmî tatillerde 08:00–20:00 arası çalışır, tur yaklaşık 40 dakikadır.",fun:"Günlük kartla gün boyu istediğin durakta inip bir sonraki otobüse binebilirsin.",food:"Yolcu salonunda basit büfe / simit; uzun mola için merkeze in.",look:"OtobEs26 tabelası ve kalkış peronu — hattın başlangıç noktası."}, en:{name:"Bus Terminal",photoPlace:"Snap the Otogar sign",photoSelfie:"Selfie at Otogar",tag:"Start of the line",fact:"The OtobEs26 tourist loop departs from the terminal on weekends and public holidays, 08:00–20:00; a full loop takes about 40 minutes.",fun:"With a day pass you can hop off at any stop and catch the next bus.",food:"Simple kiosk / simit in the terminal; hop into town for a longer break.",look:"The OtobEs26 sign and departure bay — start of the loop."}, de:{name:"Busbahnhof",photoPlace:"Otogar-Schild fotografieren",photoSelfie:"Selfie vor dem Otogar",tag:"Start der Linie",fact:"Die Touristenlinie OtobEs26 startet am Busbahnhof; an Wochenenden und Feiertagen 08:00–20:00, eine Runde dauert etwa 40 Minuten.",fun:"Mit Tageskarte kannst du an jedem Halt aussteigen und den nächsten Bus nehmen.",food:"Einfacher Kiosk / Simit im Terminal; für längere Pause in die Stadt.",look:"OtobEs26-Schild und Abfahrt — Start der Ringlinie."}},
+    {id:"kentpark",  lat:39.784,lng:30.4902, tr:{name:"Kentpark",photoPlace:"Kentpark göletini çek",photoSelfie:"Parkta kendinle selfie",tag:"Şehir parkı",fact:"Kentpark, Porsuk kıyısında yaklaşık 300 dönümlük bir park; içinde yapay plaj, havuzlar ve yürüyüş yolları bulunur.",fun:"Denize en uzak şehirlerden birinde kumsal var: Kentpark plajı.",dialect:"Su kenarında «eşme» düşün: kaynak / pınar. Park yapay plajdır ama su sözleri ağızda yaşar.",food:"Park kafelerinde dondurma / limonata; plaj yanında hafif atıştırmalık.",look:"Yapay plaj, gölet ve uzun yürüyüş yolları — «denizi olmayan şehrin kumsali»."}, en:{name:"Kentpark",photoPlace:"Snap Kentpark lake",photoSelfie:"Selfie in the park",tag:"City park",fact:"Kentpark is a large riverside park on the Porsuk with an artificial beach, pools and walking paths.",fun:"One of Turkey's most landlocked cities has a sandy beach — right here.",dialect:"By the water think «eşme»: a spring. The beach is artificial, but water-words live in dialect.",food:"Park cafés for ice cream / lemonade; light snacks by the beach.",look:"Artificial beach, lake and long paths — a beach far from the sea."}, de:{name:"Kentpark",photoPlace:"Kentpark-See fotografieren",photoSelfie:"Selfie im Park",tag:"Stadtpark",fact:"Kentpark ist ein großer Park am Porsuk mit künstlichem Strand, Pools und Wegen.",fun:"Eine der binnenländischsten Städte der Türkei hat hier einen Sandstrand.",dialect:"Am Wasser denk an «eşme»: eine Quelle. Der Strand ist künstlich, Wasserwörter leben im Dialekt.",food:"Parkcafés mit Eis / Limonade; leichte Snacks am Strand.",look:"Kunststrand, See und Wege — Strand ohne Meer."}},
+    {id:"opera",  lat:39.7798,lng:30.5162, tr:{name:"Opera",photoPlace:"Opera binasını çek",photoSelfie:"Opera önünde selfie",tag:"Sanat ve Kültür Sarayı",fact:"Eskişehir Büyükşehir Belediyesi Sanat ve Kültür Sarayı; opera, bale ve senfoni konserlerine ev sahipliği yapar.",fun:"Eskişehir, kendi senfoni orkestrası ve opera topluluğu olan az sayıdaki Anadolu şehrinden biridir.",food:"Çevrede öğrenci kafeleri; gösteri öncesi hafif bir çay molası.",look:"Sanat ve Kültür Sarayı cephesi ve afişler — opera / bale duyuruları."}, en:{name:"Opera House",photoPlace:"Snap the Opera building",photoSelfie:"Selfie at the Opera",tag:"Arts and Culture Palace",fact:"The Metropolitan Arts and Culture Palace hosts opera, ballet and symphony concerts.",fun:"Eskişehir is one of the few Anatolian cities with its own symphony orchestra and opera company.",food:"Student cafés nearby; a light tea stop before a show.",look:"Arts palace façade and posters — opera / ballet announcements."}, de:{name:"Opernhaus",photoPlace:"Opernhaus fotografieren",photoSelfie:"Selfie vor der Oper",tag:"Kunst- und Kulturpalast",fact:"Der Kunst- und Kulturpalast der Metropolgemeinde bietet Oper, Ballett und Symphonie.",fun:"Eskişehir gehört zu den wenigen anatolischen Städten mit eigenem Orchester und Oper.",food:"Studentencafés in der Nähe; Tee vor der Vorstellung.",look:"Fassade des Kulturpalasts und Plakate — Oper / Ballett."}},
+    {id:"adalar",  lat:39.7802,lng:30.5158, tr:{name:"Adalar",photoPlace:"Adalar / Porsuk köprüsünü çek",photoSelfie:"Adalar’da selfie",tag:"Porsuk kıyısı",fact:"Porsuk Çayı'nın ortasındaki adacıklar; kafeler, köprüler ve gondol turlarıyla şehrin buluşma noktası.",fun:"Porsuk'ta Venedik tarzı gondollarla gezinti yapılabilir.",dialect:"Yağmurdan sonra «ıslama» olur: ıslak toprak, çamur. Porsuk kenarında ağız sözü dene!",food:"Porsuk kenarında balık ekmek veya gözleme; yazın dondurma tezgâhları.",look:"Köprüler, gondollar ve adacık kafeleri — şehrin buluşma noktası."}, en:{name:"Adalar",photoPlace:"Snap Adalar / Porsuk bridge",photoSelfie:"Selfie at Adalar",tag:"Porsuk riverside",fact:"Small islands in the Porsuk River lined with cafés and bridges — the city's meeting point.",fun:"You can take a Venetian-style gondola ride on the Porsuk.",dialect:"After rain there is «ıslama»: wet earth, mud. Try the dialect word by the Porsuk!",food:"Fish sandwich or gözleme by the Porsuk; ice-cream carts in summer.",look:"Bridges, gondolas and island cafés — the city's meeting point."}, de:{name:"Adalar",photoPlace:"Adalar / Porsuk-Brücke fotografieren",photoSelfie:"Selfie bei Adalar",tag:"Porsuk-Ufer",fact:"Kleine Inseln im Porsuk mit Cafés, Brücken und Gondelfahrten — Treffpunkt der Stadt.",fun:"Auf dem Porsuk kannst du in venezianischen Gondeln fahren.",dialect:"Nach Regen gibt es «ıslama»: nasse Erde, Schlamm. Probier das Dialektwort am Porsuk!",food:"Fischbrötchen oder Gözleme am Porsuk; im Sommer Eiswagen.",look:"Brücken, Gondeln und Inselcafés — Treffpunkt der Stadt."}},
+    {id:"haller",  lat:39.78133,lng:30.51309, tr:{name:"Haller",photoPlace:"Haller Gençlik Merkezi’ni çek",photoSelfie:"Haller önünde selfie",tag:"Gençlik Merkezi",fact:"Eski hal binası restore edilerek Haller Gençlik Merkezi'ne dönüştürüldü; konser ve etkinlik alanı olarak kullanılır.",fun:"Bir zamanlar sebze-meyve satılan binada şimdi konserler veriliyor.",dialect:"Sofrada «çibörek» de: Kırım Tatar mirası; «çiğ börek»ten gelir — ağız ve göç kültürü birlikte.",food:"Yakın sokaklarda çibörek ve ayran — Kırım Tatar lezzeti (reklam değil, kültür).",look:"Eski hal binasının yüksek çatısı ve gençlik merkezi girişi."}, en:{name:"Haller",photoPlace:"Snap Haller Youth Center",photoSelfie:"Selfie at Haller",tag:"Youth centre",fact:"The old wholesale market hall was restored into the Haller Youth Centre, a concert and events venue.",fun:"Where fruit and vegetables were once sold, bands now play.",dialect:"At the table say «çibörek»: Crimean Tatar heritage from «çiğ börek» — dialect meets migration culture.",food:"Nearby streets: çibörek and ayran — Crimean Tatar taste (culture, not an ad).",look:"The tall roof of the old market hall and the youth-centre entrance."}, de:{name:"Haller",photoPlace:"Haller-Jugendzentrum fotografieren",photoSelfie:"Selfie vor Haller",tag:"Jugendzentrum",fact:"Die alte Markthalle wurde zum Haller-Jugendzentrum restauriert — Konzerte und Events.",fun:"Wo früher Obst und Gemüse verkauft wurden, spielen heute Bands.",dialect:"Am Tisch sag «çibörek»: krimtatarisches Erbe von «çiğ börek» — Dialekt trifft Migrationskultur.",food:"In Nebenstraßen: Çibörek und Ayran — krimtatarischer Geschmack (Kultur, keine Werbung).",look:"Hohes Dach der alten Markthalle und Eingang des Jugendzentrums."}},
+    {id:"vecihi",  lat:39.78709,lng:30.50012, tr:{name:"Vecihi Hürkuş Parkı",photoPlace:"Parktaki uçağı / anıtı çek",photoSelfie:"Vecihi parkında selfie",tag:"Havacılık parkı",fact:"Türk havacılığının öncüsü Vecihi Hürkuş'un adını taşır; Eskişehir'in havacılık şehri kimliğini yansıtır.",fun:"Vecihi Hürkuş 1925'te kendi tasarladığı uçağı yaptı: Vecihi K-VI.",food:"Park çevresinde küçük büfe; uzun mola için Kentpark tarafına kay.",look:"Uçak / anıt ve havacılık panoları — Vecihi Hürkuş’un adı."}, en:{name:"Vecihi Hürkuş Park",photoPlace:"Snap the plane / monument",photoSelfie:"Selfie at Vecihi Park",tag:"Aviation park",fact:"Named after Turkish aviation pioneer Vecihi Hürkuş, reflecting Eskişehir's identity as an aviation city.",fun:"Hürkuş designed and built his own aircraft in 1925, the Vecihi K-VI.",food:"Small kiosk by the park; for a longer break head toward Kentpark.",look:"Aircraft / monument and aviation boards — Vecihi Hürkuş's name."}, de:{name:"Vecihi-Hürkuş-Park",photoPlace:"Flugzeug / Denkmal fotografieren",photoSelfie:"Selfie im Vecihi-Park",tag:"Luftfahrtpark",fact:"Benannt nach dem Luftfahrtpionier Vecihi Hürkuş — Eskişehir als Luftfahrtstadt.",fun:"Hürkuş baute 1925 sein eigenes Flugzeug: die Vecihi K-VI.",food:"Kleiner Kiosk am Park; längere Pause Richtung Kentpark.",look:"Flugzeug / Denkmal und Luftfahrttafeln — Name Vecihi Hürkuş."}},
+    {id:"gar",  lat:39.7804,lng:30.5068, tr:{name:"Tren Garı",photoPlace:"Tren garı binasını çek",photoSelfie:"Gar önünde selfie",tag:"Demiryolu tarihi",fact:"Eskişehir Garı, Anadolu demiryolu hattının en önemli kavşaklarındandır; yüksek hızlı tren de buradan geçer.",fun:"Şehir, demiryolu atölyeleri sayesinde 'lokomotif şehri' olarak anıldı.",dialect:"«Lokomotif şehri» lakabı demiryolu ağzıdır: gar, atölye, tren günlük dilde iç içe.",food:"Gar çevresinde simit, poğaça, çay; YHT yolcuları için hızlı büfe.",look:"Tarihi gar binası ve raylar — «lokomotif şehri» kimliği."}, en:{name:"Railway Station",photoPlace:"Snap the train station",photoSelfie:"Selfie at the station",tag:"Railway heritage",fact:"Eskişehir Station is one of the key junctions of Anatolian railways; high-speed trains stop here too.",fun:"Thanks to its railway workshops the city was nicknamed the 'locomotive city'.",dialect:"«Locomotive city» is railway talk: station, workshop and train weave into everyday speech.",food:"Simit, poğaça and tea around the station; quick kiosks for HSR travellers.",look:"Historic station building and tracks — «locomotive city» identity."}, de:{name:"Bahnhof",photoPlace:"Bahnhofsgebäude fotografieren",photoSelfie:"Selfie vor dem Bahnhof",tag:"Eisenbahnerbe",fact:"Der Bahnhof Eskişehir ist ein wichtiger Knoten der anatolischen Bahn; auch Hochgeschwindigkeitszüge halten hier.",fun:"Wegen der Bahnwerkstätten wurde die Stadt «Lokomotivstadt» genannt.",dialect:"«Lokomotivstadt» ist Bahnjargon: Bahnhof, Werkstatt und Zug gehören zur Alltagssprache.",food:"Simit, Poğaça und Tee am Bahnhof; schnelle Kioske für Schnellzugreisende.",look:"Historisches Bahnhofsgebäude und Gleise — «Lokomotivstadt»."}},
+    {id:"devrim",  lat:39.77452,lng:30.50235, tr:{name:"Devrim Arabası",photoPlace:"Devrim arabasını çek",photoSelfie:"Devrim’le kendinle selfie",tag:"Türkiye'nin ilk yerli otomobili",fact:"Devrim, 1961'de Eskişehir Demiryolu Fabrikası'nda 130 günde üretilen Türkiye'nin ilk yerli otomobilidir; müzede sergilenir.",fun:"Dört prototip yapıldı; bugün sadece biri sağlam durumda sergileniyor.",legend:"Halk arasında «benzinsiz kaldı» anlatısı gazete manşetleriyle büyüdü. Teknik kayıt: az yakıt ve iletişim kazası. Anlatı ile belge ayrı tutulmalı.",food:"Müze / fabrika çevresinde basit kantin notu; asıl lezzet için Odunpazarı’na.",look:"Devrim arabasının gövdesi ve 1961 panosu — Türkiye’nin ilk yerli otomobili."}, en:{name:"Devrim Car",photoPlace:"Snap the Devrim car",photoSelfie:"Selfie with Devrim",tag:"Turkey's first domestic car",fact:"Devrim was Turkey's first domestic automobile, built in 130 days in 1961 at the Eskişehir railway factory.",fun:"Four prototypes were built; only one survives on display today.",legend:"The popular «ran out of petrol» story grew with headlines. Technical record: little fuel and a communication mishap. Keep tale and document apart.",food:"Simple canteen note near the museum; head to Odunpazarı for local flavours.",look:"The Devrim car body and 1961 panel — Turkey's first domestic car."}, de:{name:"Devrim-Auto",photoPlace:"Devrim-Auto fotografieren",photoSelfie:"Selfie mit Devrim",tag:"Erstes einheimisches Auto der Türkei",fact:"Devrim wurde 1961 in 130 Tagen in der Eskişehirer Bahnfabrik gebaut — erstes einheimisches Auto; im Museum zu sehen.",fun:"Vier Prototypen; heute ist nur einer ausgestellt.",legend:"Die Geschichte «ohne Benzin» wuchs mit Schlagzeilen. Technik: wenig Kraftstoff und Kommunikationsfehler. Erzählung und Beleg trennen.",food:"Einfache Kantine nahe dem Museum; Geschmack eher in Odunpazarı.",look:"Karosserie des Devrim-Autos und Tafel 1961 — erstes einheimisches Auto."}},
+    {id:"sazova",  lat:39.76039,lng:30.47334, tr:{name:"Sazova",photoPlace:"Masal Şatosu’nu çek",photoSelfie:"Sazova’da selfie",tag:"Bilim, Sanat ve Kültür Parkı",fact:"Sazova Parkı içinde masal şatosu, bilim deney merkezi, hayvanat bahçesi ve korsan gemisi replikası bulunur.",fun:"Şatonun kuleleri Anadolu'nun farklı bölgelerindeki tarihi yapılardan esinlenmiştir.",legend:"Şato yenidir; ama Eskişehir’in sözlü mirasında Nasreddin Hoca (Sivrihisar Hortu) ve «göle maya çalmak» anlatıları burada çocuklara masal diliyle aktarılır.",dialect:"Masal dilinde «evecen» çocuk acelecidir — parkta koşarken «çalağan / evecen» diyebilirsin.",food:"Park içi kafelerde sandviç / dondurma; piknik alanları açık havada.",look:"Masal Şatosu kuleleri, korsan gemisi ve bilim merkezi girişi."}, en:{name:"Sazova Park",photoPlace:"Snap the Fairy Tale Castle",photoSelfie:"Selfie at Sazova",tag:"Science, art and culture park",fact:"Sazova Park has a fairy-tale castle, a science centre, a zoo and a replica pirate ship.",fun:"The castle's towers are inspired by historic buildings from across Anatolia.",legend:"The castle is modern, yet oral heritage — Nasreddin Hoca of Hortu and the yeast-in-the-lake tale — is retold here for children.",dialect:"In story-speech an «evecen» child is hurried — say «çalağan / evecen» while you run.",food:"Park cafés for sandwiches / ice cream; picnic spots outdoors.",look:"Fairy-tale castle towers, pirate ship and science-centre entrance."}, de:{name:"Sazova-Park",photoPlace:"Märchenschloss fotografieren",photoSelfie:"Selfie in Sazova",tag:"Wissenschafts-, Kunst- und Kulturpark",fact:"Im Sazova-Park gibt es Märchenschloss, Wissenschaftszentrum, Zoo und ein Piratenschiff.",fun:"Die Türme sind von historischen Bauten aus ganz Anatolien inspiriert.",legend:"Das Schloss ist neu; mündliches Erbe — Nasreddin Hoca aus Hortu und die Hefe-im-See-Geschichte — wird hier für Kinder erzählt.",dialect:"Im Märchenton ist ein «evecen» Kind eilig — sag «çalağan / evecen» beim Rennen.",food:"Parkcafés mit Sandwich / Eis; Picknickplätze im Freien.",look:"Märchenschloss-Türme, Piratenschiff und Eingang zum Wissenschaftszentrum."}},
+    {id:"aktif",  lat:39.7688,lng:30.486, tr:{name:"Aktif Yaşam Parkı",photoPlace:"Spor alanını / parkı çek",photoSelfie:"Aktif Yaşam’da selfie",tag:"Spor parkı",fact:"Açık hava spor alanları, koşu parkurları ve bisiklet yollarıyla şehrin spor merkezi.",fun:"Eskişehir, Türkiye'de kişi başına en fazla bisiklet yolu olan şehirlerden biri.",food:"Spor sonrası meyve suyu / ayran büfeleri; ağır yemek için merkeze dön.",look:"Koşu parkuru, bisiklet yolu ve açık spor alanları."}, en:{name:"Active Life Park",photoPlace:"Snap the sports area",photoSelfie:"Selfie at Active Life Park",tag:"Sports park",fact:"Outdoor sports fields, running tracks and cycling lanes — the city's sports hub.",fun:"Eskişehir has one of the highest lengths of bike lanes per person in Turkey.",food:"Juice / ayran kiosks after sport; head downtown for a proper meal.",look:"Running track, bike lane and outdoor sports fields."}, de:{name:"Aktiv-Leben-Park",photoPlace:"Sportfläche / Park fotografieren",photoSelfie:"Selfie im Aktiv-Leben-Park",tag:"Sportpark",fact:"FreiSportflächen, Laufstrecken und Radwege — Sportzentrum der Stadt.",fun:"Eskişehir hat eine der höchsten Radweglängen pro Person in der Türkei.",food:"Saft- / Ayran-Kioske nach dem Sport; richtiges Essen eher in der Innenstadt.",look:"Laufbahn, Radweg und Sportflächen im Freien."}},
+    {id:"ugur",  lat:39.7685,lng:30.508, tr:{name:"Uğur Mumcu Parkı",photoPlace:"Uğur Mumcu parkını çek",photoSelfie:"Parkta kendinle selfie",tag:"Mahalle parkı",fact:"Gazeteci Uğur Mumcu'nun adını taşıyan park; heykeller ve gölgelik yürüyüş alanlarıyla dinlenme noktası.",fun:"Park, Sazova ile şehir merkezi arasında bir mola noktasıdır.",food:"Mahalle parkı: yakında fırın / çay ocağı; büyük öğün için Adalar hattına.",look:"Heykeller, gölgelik yollar ve dinlenme bankları."}, en:{name:"Uğur Mumcu Park",photoPlace:"Snap Uğur Mumcu Park",photoSelfie:"Selfie in the park",tag:"Neighbourhood park",fact:"Named after journalist Uğur Mumcu; sculptures and shaded walkways make it a resting point.",fun:"A handy break between Sazova and the city centre.",food:"Neighbourhood park: bakery / tea shop nearby; bigger meals toward Adalar.",look:"Sculptures, shaded paths and resting benches."}, de:{name:"Uğur-Mumcu-Park",photoPlace:"Uğur-Mumcu-Park fotografieren",photoSelfie:"Selfie im Park",tag:"Stadtteilpark",fact:"Benannt nach dem Journalisten Uğur Mumcu; Skulpturen und schattige Wege.",fun:"Praktische Pause zwischen Sazova und der Innenstadt.",food:"Stadtteilpark: Bäckerei / Teestube nah; größere Mahlzeit Richtung Adalar.",look:"Skulpturen, schattige Wege und Bänke."}},
+    {id:"eti",  lat:39.76578,lng:30.51304, tr:{name:"Eti Arkeoloji Müzesi",photoPlace:"Müze binasını / girişini çek",photoSelfie:"Müze önünde selfie",tag:"Frig ve Roma eserleri",fact:"Müzede Frig, Roma ve Bizans dönemine ait eserler sergilenir; Eskişehir'in antik adı Dorylaion'du.",fun:"Frig Vadisi'ndeki kaya anıtlarının küçük kopyaları müzede görülebilir.",legend:"Frig efsanesi: Kral Midas’ın dokunduğu her şeyin altına dönüşmesi. Müze arkeoloji anlatır; Midas mitostur, kanıt değil.",dialect:"Müze «Dorylaion» der; ağızda antik yer adları da mirastır — mit ile belgeyi ayır.",food:"Müze kafesinde kısa bir çay; sonra Odunpazarı’nda methel helvası dene (şehir tatlısı).",look:"Frig / Roma vitrinleri ve Dorylaion bilgilendirme panoları."}, en:{name:"Eti Archaeology Museum",photoPlace:"Snap the museum entrance",photoSelfie:"Selfie at the museum",tag:"Phrygian and Roman finds",fact:"Exhibits from the Phrygian, Roman and Byzantine eras; Eskişehir's ancient name was Dorylaion.",fun:"Miniature copies of the Phrygian Valley rock monuments are on display.",legend:"Phrygian myth: King Midas turning all he touched to gold. The museum is archaeology; Midas is myth, not proof.",dialect:"The museum says «Dorylaion»; ancient place-names are heritage — keep myth and evidence apart.",food:"A short tea at the museum café; then try methel helva in Odunpazarı (city sweet).",look:"Phrygian / Roman cases and Dorylaion info boards."}, de:{name:"Eti-Archäologiemuseum",photoPlace:"Museumseingang fotografieren",photoSelfie:"Selfie vor dem Museum",tag:"Phrygische und römische Funde",fact:"Funde aus phrygischer, römischer und byzantinischer Zeit; antiker Name: Dorylaion.",fun:"Miniaturen der Felsdenkmäler im Phrygischen Tal sind ausgestellt.",legend:"Phrygischer Mythos: König Midas verwandelte alles in Gold. Das Museum ist Archäologie; Midas ist Mythos, kein Beweis.",dialect:"Das Museum sagt «Dorylaion»; antike Ortsnamen sind Erbe — Mythos und Beleg trennen.",food:"Kurzer Tee im Museumscafé; danach Methel-Helva in Odunpazarı (Stadtsüßspeise).",look:"Phrygische / römische Vitrinen und Dorylaion-Tafeln."}},
+    {id:"odunpazari",  lat:39.763,lng:30.5258, tr:{name:"Odunpazarı Evleri",photoPlace:"Odunpazarı evini çek",photoSelfie:"Evlerle kendinle selfie",tag:"Tarihi mahalle",fact:"Osmanlı dönemi ahşap evleri, 19. yüzyıl sivil mimarisinin en iyi korunmuş örneklerinden; UNESCO geçici listesinde.",fun:"Evlerin cumbaları sokağa taşarak yaz sıcağında gölge yapacak biçimde tasarlanmış.",legend:"Kuruluş anlatısı: üç koyun ciğeri Şarhöyük, Porsuk kenarı ve Kurşunlu yakınına asılır; en geç bozulan ciğer Odunpazarı tarafında kalır. İl Kültür’ün aktardığı söylencedir. Adın kökeni ayrı: odun pazarı.",dialect:"Burada «çetare» denebilir: çırpı / odun parçası — mahallenin adı da odun pazarından gelir.",food:"Çibörek, methel helvası ve lületaşı atölyesi yanındaki küçük kafeler — kültür lezzetleri.",look:"Ahşap cumbalı evler, dar sokaklar ve Kurşunlu Külliyesi kubbesi."}, en:{name:"Odunpazarı Houses",photoPlace:"Snap an Odunpazarı house",photoSelfie:"Selfie with the houses",tag:"Historic quarter",fact:"Ottoman-era timber houses, among the best-preserved 19th-century civil architecture; on UNESCO's tentative list.",fun:"The bay windows jut over the street to cast shade in summer heat.",legend:"Foundation tale: three sheep livers hung at Şarhöyük, the Porsuk bank and near Kurşunlu; the one that lasted marked Odunpazarı. Oral legend via the culture directorate. The name itself comes from the wood market.",dialect:"You can say «çetare» here: kindling / wood scrap — the quarter's name comes from the wood market.",food:"Çibörek, methel helva and small cafés by meerschaum workshops — cultural flavours.",look:"Timber bay-window houses, narrow streets and the Kurşunlu dome."}, de:{name:"Odunpazarı-Häuser",photoPlace:"Odunpazarı-Haus fotografieren",photoSelfie:"Selfie mit den Häusern",tag:"Historisches Viertel",fact:"Osmanische Holzhäuser, gut erhaltene Zivilarchitektur des 19. Jh.; auf der UNESCO-Tentativliste.",fun:"Erker ragen über die Gasse und spenden im Sommer Schatten.",legend:"Gründungslegende: drei Schafslebern an Şarhöyük, Porsuk und nahe Kurşunlu; die haltbarste markierte Odunpazarı. Mündliche Überlieferung. Der Name kommt vom Holzmarkt.",dialect:"Hier kannst du «çetare» sagen: Reisig / Holzstück — der Stadtteilname kommt vom Holzmarkt.",food:"Çibörek, Methel-Helva und Cafés an Lületaşı-Werkstätten — kulturelle Aromen.",look:"Holzhäuser mit Erkern, enge Gassen und Kurşunlu-Kuppel."}},
+    {id:"akm",  lat:39.7648,lng:30.5198, tr:{name:"AKM",photoPlace:"AKM binasını çek",photoSelfie:"AKM önünde selfie",tag:"Atatürk Kültür Merkezi",fact:"Atatürk Kültür Merkezi; tiyatro, sergi ve konferanslara ev sahipliği yapan çok amaçlı kültür yapısı.",fun:"Şehrin kültür takviminin büyük kısmı bu binadan yayılır.",food:"Kültür merkezi çevresinde çay bahçeleri; gösteri arası hafif atıştırmalık.",look:"AKM girişi, afişler ve tiyatro / sergi duyuruları."}, en:{name:"AKM",photoPlace:"Snap the AKM building",photoSelfie:"Selfie at AKM",tag:"Atatürk Cultural Centre",fact:"A multi-purpose cultural centre hosting theatre, exhibitions and conferences.",fun:"Much of the city's cultural calendar radiates from this building.",food:"Tea gardens around the cultural centre; light snacks at interval.",look:"AKM entrance, posters and theatre / exhibition notices."}, de:{name:"AKM",photoPlace:"AKM-Gebäude fotografieren",photoSelfie:"Selfie vor dem AKM",tag:"Atatürk-Kulturzentrum",fact:"Mehrzweck-Kulturzentrum für Theater, Ausstellungen und Konferenzen.",fun:"Viel vom Kulturkalender der Stadt geht von diesem Gebäude aus.",food:"Teegärten ums Kulturzentrum; leichte Snacks in der Pause.",look:"AKM-Eingang, Plakate und Theater- / Ausstellungsankündigungen."}},
+    {id:"askadasi",  lat:39.77312,lng:30.53877, tr:{name:"Aşk Adası",photoPlace:"Aşk Adası’nı / kilitleri çek",photoSelfie:"Ada üzerinde selfie",tag:"Porsuk üzerinde ada",fact:"Porsuk Çayı üzerinde köprüyle ulaşılan küçük ada; çay bahçeleri ve gün batımı manzarasıyla bilinir.",fun:"Adaya adını, çevresinde buluşan çiftler vermiş.",legend:"Kulaktan gelen isim: burayı buluşma yeri yapanlar «aşk» demiş. Ada modern bir düzenleme; lakap halkın romantik anlatısıdır.",dialect:"Halk «aşk» demiş bu adaya; ağız ve lakap iç içe: sevgi sözü yer adına dönüşmüş.",food:"Ada çay bahçelerinde çay ve tatlı; köprüden önce Porsuk kenarı atıştırmalıkları.",look:"Aşk kilitleri, köprü ve gün batımında Porsuk manzarası."}, en:{name:"Love Island",photoPlace:"Snap Aşk Adası / locks",photoSelfie:"Selfie on the island",tag:"Island on the Porsuk",fact:"A small island on the Porsuk reached by a footbridge, known for tea gardens and sunsets.",fun:"The island got its name from the couples who used to meet here.",legend:"Folk naming: couples who met here called it love. The island is modern landscaping; the nickname is popular oral culture.",dialect:"People called this island «aşk» (love); a nickname became a place name.",food:"Tea and sweets on island tea gardens; riverside snacks before the bridge.",look:"Love locks, the footbridge and Porsuk sunset views."}, de:{name:"Liebesinsel",photoPlace:"Liebesinsel / Schlösser fotografieren",photoSelfie:"Selfie auf der Insel",tag:"Insel auf dem Porsuk",fact:"Kleine Insel auf dem Porsuk, über einen Steg erreichbar; Teegärten und Sonnenuntergänge.",fun:"Den Namen gaben Paare, die sich hier trafen.",legend:"Volksname: Paare nannten den Ort Liebe. Die Insel ist moderne Gestaltung; der Spitzname ist mündliche Kultur.",dialect:"Die Leute nannten diese Insel «aşk» (Liebe); Spitzname wurde zum Ortsnamen.",food:"Tee und Süßes in Insel-Teegärten; Snacks am Fluss vor der Brücke.",look:"Liebesschlösser, Steg und Porsuk-Sonnenuntergang."}}
+  ],
+  riddles: [
+    {tr:{q:"Kubbem kurşun, adım ondan; Odunpazarı'nda beş asırdır duran ben kimim?",a:"Kurşunlu Külliyesi"},en:{q:"My dome is lead, hence my name; standing five centuries in Odunpazarı. Who am I?",a:"Kurşunlu Complex"},de:{q:"Meine Kuppel ist aus Blei, daher mein Name; seit fünf Jahrhunderten in Odunpazarı. Wer bin ich?",a:"Kurşunlu-Komplex"},stop:"odunpazari"},
+    {tr:{q:"130 günde doğdum, ilk yerli benim; adım devrim ama tekerlek üstündeyim.",a:"Devrim Arabası"},en:{q:"Born in 130 days, first of my kind; my name means revolution but I run on wheels.",a:"Devrim Car"},de:{q:"In 130 Tagen geboren, das erste seiner Art; mein Name heißt Revolution, aber ich fahre auf Rädern.",a:"Devrim-Auto"},stop:"devrim"},
+    {tr:{q:"Denizim yok ama kumsalım var; şehrin ortasında serinlemeye gel.",a:"Kentpark plajı"},en:{q:"I have no sea but I have a beach; come cool off in the city centre.",a:"Kentpark beach"},de:{q:"Ich habe kein Meer, aber einen Strand; komm abkühlen mitten in der Stadt.",a:"Kentpark-Strand"},stop:"kentpark"},
+    {tr:{q:"Kaşıkla kazılır, ocakta pişmez; taşım beyaz, adım Eskişehir'le anılır.",a:"Lületaşı"},en:{q:"Dug with care, never fired; my white stone is named with Eskişehir.",a:"Meerschaum"},de:{q:"Mit Vorsicht gegraben, nie gebrannt; mein weißer Stein trägt den Namen Eskişehir.",a:"Meerschaum (Lületaşı)"},stop:null},
+    {tr:{q:"Suyun ortasında adayım, köprüyle gelinir; adımda sevgi var.",a:"Aşk Adası"},en:{q:"An island in the river, reached by a bridge; there is love in my name.",a:"Love Island"},de:{q:"Eine Insel im Fluss, über eine Brücke erreichbar; in meinem Namen steckt Liebe.",a:"Liebesinsel"},stop:"askadasi"},
+    {tr:{q:"Bir kulem Mardin'den, bir kulem Safranbolu'dan; içimde masal, dışımda park.",a:"Sazova Şatosu"},en:{q:"One tower from Mardin, one from Safranbolu; a fairy tale inside, a park outside.",a:"Sazova Castle"},de:{q:"Ein Turm aus Mardin, einer aus Safranbolu; drinnen Märchen, draußen Park.",a:"Sazova-Schloss"},stop:"sazova"},
+    {tr:{q:"Kanadım yok ama uçtum; adımı parka verdiler.",a:"Vecihi Hürkuş"},en:{q:"I had no wings yet I flew; they gave my name to a park.",a:"Vecihi Hürkuş"},de:{q:"Ich hatte keine Flügel und flog doch; sie gaben meinem Namen einen Park.",a:"Vecihi Hürkuş"},stop:"vecihi"},
+    {tr:{q:"Sabah gelir akşam gider, ne kuştur ne de kervan; bilmecelerin en eskisi. Nedir?",a:"Güneş"},en:{q:"Comes at morning, leaves at dusk, neither bird nor caravan. What is it?",a:"The sun"},de:{q:"Kommt morgens, geht abends, weder Vogel noch Karawane. Was ist es?",a:"Die Sonne"},stop:null},
+    {tr:{q:"Bir evim var kapısı yok, içinde bin misafir var. Nedir?",a:"Nar"},en:{q:"A house with no door, a thousand guests inside. What is it?",a:"Pomegranate"},de:{q:"Ein Haus ohne Tür, tausend Gäste drinnen. Was ist es?",a:"Granatapfel"},stop:null}
+  ],
+  truth: [
+    {tr:"Eskişehir'de üniversite öğrencisi sayısı 100 binin üzerindedir.",en:"Eskişehir has over 100,000 university students.",de:"Eskişehir hat über 100.000 Universitätsstudenten.",ok:true,tr_x:"Doğru. İki büyük üniversitesiyle Eskişehir bir öğrenci şehridir.",en_x:"True. With two large universities, Eskişehir is a student city.",de_x:"Wahr. Mit zwei großen Universitäten ist Eskişehir eine Studentenstadt.",stop:null},
+    {tr:"Kentpark'ta gerçek bir kumsal vardır.",en:"Kentpark has a real sandy beach.",de:"Kentpark hat einen echten Sandstrand.",ok:true,tr_x:"Doğru. Yapay plaj Porsuk kıyısında.",en_x:"True. The artificial beach is on the Porsuk bank.",de_x:"Wahr. Der künstliche Strand liegt am Porsuk-Ufer.",stop:"kentpark"},
+    {tr:"Eskişehir'de uçak motoru üretilir.",en:"Aircraft engines are built in Eskişehir.",de:"In Eskişehir werden Flugzeugmotoren gebaut.",ok:true,tr_x:"Doğru. Şehir havacılık sanayisiyle bilinir.",en_x:"True. The city is known for its aviation industry.",de_x:"Wahr. Die Stadt ist für ihre Luftfahrtindustrie bekannt.",stop:"vecihi"},
+    {tr:"Devrim Arabası 1 yılda üretildi.",en:"The Devrim car took one year to build.",de:"Das Devrim-Auto wurde in einem Jahr gebaut.",ok:false,tr_x:"Uydurma. 130 günde üretildi.",en_x:"False. It was built in 130 days.",de_x:"Falsch. Es wurde in 130 Tagen gebaut.",stop:"devrim"},
+    {tr:"Eskişehir denize kıyısı olan bir şehirdir.",en:"Eskişehir is a coastal city.",de:"Eskişehir ist eine Küstenstadt.",ok:false,tr_x:"Uydurma. İç Anadolu'dadır; plajı yapaydır.",en_x:"False. It's in central Anatolia; the beach is artificial.",de_x:"Falsch. Sie liegt in Inneranatolien; der Strand ist künstlich.",stop:"kentpark"},
+    {tr:"Odunpazarı Evleri UNESCO geçici listesindedir.",en:"Odunpazarı Houses are on UNESCO's tentative list.",de:"Die Odunpazarı-Häuser stehen auf der UNESCO-Tentativliste.",ok:true,tr_x:"Doğru.",en_x:"True.",de_x:"Wahr.",stop:"odunpazari"},
+    {tr:"Porsuk Çayı'nda gondol turu yapılır.",en:"There are gondola rides on the Porsuk River.",de:"Auf dem Porsuk gibt es Gondelfahrten.",ok:true,tr_x:"Doğru. Adalar bölgesinde.",en_x:"True. Around the Adalar area.",de_x:"Wahr. Im Bereich Adalar.",stop:"adalar"},
+    {tr:"Eskişehir'in antik adı Efes'tir.",en:"Eskişehir's ancient name was Ephesus.",de:"Der antike Name von Eskişehir war Ephesos.",ok:false,tr_x:"Uydurma. Antik adı Dorylaion'du.",en_x:"False. Its ancient name was Dorylaion.",de_x:"Falsch. Der antike Name war Dorylaion.",stop:"eti"}
+  ],
+  idioms: [
+    {tr:{q:"Eskişehir ağzında «atgıç» ne demektir?",opts:["Küçük sopa, çubuk","Büyük balta","Taş fırın"],a:0,m:"Yöresel ağız: küçük sopa / çubuk. Derleme kaynaklı Eskişehir ağzı söz varlığı."},en:{q:"In Eskişehir dialect, what is «atgıç»?",opts:["A small stick","A big axe","A stone oven"],a:0,m:"Local word: small stick."},de:{q:"Was bedeutet «atgıç» im Dialekt von Eskişehir?",opts:["Kleiner Stock, Stöckchen","Große Axt","Steinofen"],a:0,m:"Regionales Wort: kleiner Stock / Stöckchen."}},
+    {tr:{q:"«Çalağan» biri nasıl biridir?",opts:["Acelesi olan, tez canlı","Çok uykucu","Sessiz ve ağır"],a:0,m:"Tez canlı, aceleci kimse. Eskişehir köy ağızlarında sık duyulur."},en:{q:"What kind of person is «çalağan»?",opts:["Hurried, quick","Very sleepy","Quiet and slow"],a:0,m:"Someone in a rush."},de:{q:"Was für ein Mensch ist «çalağan»?",opts:["Eilig, flink","Sehr schläfrig","Ruhig und langsam"],a:0,m:"Jemand, der in Eile ist."}},
+    {tr:{q:"«Eringeç» ne anlama gelir?",opts:["Üşengeç, tembel","Cesur","Misafirperver"],a:0,m:"Üşengeç / tembel. Standart Türkçe: üşengeç."},en:{q:"What does «eringeç» mean?",opts:["Lazy, reluctant","Brave","Hospitable"],a:0,m:"Lazy / reluctant."},de:{q:"Was bedeutet «eringeç»?",opts:["Faul, unwillig","Mutig","Gastfreundlich"],a:0,m:"Faul / unwillig."}},
+    {tr:{q:"«Danmak» fiili neyi anlatır?",opts:["Fark etmek, ayırdına varmak","Dans etmek","Bağırmak"],a:0,m:"Farkına varmak. «Danmadım» = fark etmedim."},en:{q:"What does «danmak» mean?",opts:["To notice, realize","To dance","To shout"],a:0,m:"To notice."},de:{q:"Was bedeutet das Verb «danmak»?",opts:["Bemerken, realisieren","Tanzen","Schreien"],a:0,m:"Bemerken."}},
+    {tr:{q:"«Pişinti» hangi yemek için söylenir?",opts:["Fazla pişmiş veya dibi tutmuş","Çiğ bırakılmış","Tuzsuz"],a:0,m:"Dibi tutmuş / fazla pişmiş yemek."},en:{q:"«Pişinti» describes food that is…",opts:["Overcooked or burned","Still raw","Unsalted"],a:0,m:"Overcooked food."},de:{q:"«Pişinti» beschreibt Essen, das …",opts:["Zu lange gegart oder angebrannt ist","Noch roh ist","Ungesalzen ist"],a:0,m:"Übergar / angebrannt."}},
+    {tr:{q:"«Yazağzı» ne zamandır?",opts:["Yazın başlangıcı","Kış ortası","Hasat sonu"],a:0,m:"Yaz mevsiminin ağzı = başlangıcı."},en:{q:"When is «yazağzı»?",opts:["Start of summer","Midwinter","End of harvest"],a:0,m:"Beginning of summer."},de:{q:"Wann ist «yazağzı»?",opts:["Beginn des Sommers","Mitten im Winter","Ende der Ernte"],a:0,m:"Anfang des Sommers."}},
+    {tr:{q:"«Çıvdırmak» ne demektir?",opts:["Çıldırmak, sinirlenmek","Koşmak","Şarkı söylemek"],a:0,m:"Sinirlenmek / çıldırmak. Günlük konuşma ağzı."},en:{q:"What does «çıvdırmak» mean?",opts:["To go mad, get furious","To run","To sing"],a:0,m:"To get furious."},de:{q:"Was bedeutet «çıvdırmak»?",opts:["Ausrasten, wütend werden","Rennen","Singen"],a:0,m:"Wütend werden."}},
+    {tr:{q:"«Oturucu» kişi nasıl anlatılır?",opts:["Ağırbaşlı, oturaklı","Sürekli yer değiştiren","Çocuksu"],a:0,m:"Ağırbaşlı, oturaklı kimse."},en:{q:"An «oturucu» person is…",opts:["Steady, composed","Always moving","Childish"],a:0,m:"Composed / steady."},de:{q:"Ein «oturucu» Mensch ist …",opts:["Gefasst, solide","Immer unterwegs","Kindisch"],a:0,m:"Gefasst / solide."}},
+    {tr:{q:"«Çetare» nedir?",opts:["Çırpı, odun parçası","Çay bardağı","Halı deseni"],a:0,m:"Çırpı / odun parçası. Odunpazarı adı da odun ticaretiyle bağlıdır."},en:{q:"What is «çetare»?",opts:["Kindling, wood scrap","A tea glass","Carpet pattern"],a:0,m:"Kindling — fits Odunpazarı's wood-market name."},de:{q:"Was ist «çetare»?",opts:["Reisig, Holzstück","Teeglas","Teppichmuster"],a:0,m:"Reisig — passt zum Holzmarkt-Namen Odunpazarı."},stop:"odunpazari"},
+    {tr:{q:"Eskişehir sofrasında «çiğ börek»ten gelen lezzetin adı?",opts:["Çibörek","Baklava","Mantı"],a:0,m:"Kırım Tatar mutfağından gelip kentle özdeşleşmiş çibörek; adı «çiğ börek»ten. Tatar mirasıdır; dürüstçe böyle anılır."},en:{q:"The Eskişehir dish whose name comes from «çiğ börek»?",opts:["Çibörek","Baklava","Mantı"],a:0,m:"Crimean Tatar heritage dish of the city — say that honestly."},de:{q:"Das Eskişehir-Gericht, dessen Name von «çiğ börek» kommt?",opts:["Çibörek","Baklava","Mantı"],a:0,m:"Krimtatarisches Erbe der Stadt — ehrlich so benennen."},stop:"haller"},
+    {tr:{q:"«Islama» Eskişehir ağzında neyi anlatır?",opts:["Yağmurla ıslanmış toprak, çamur","Kurumuş saman","Tuzlu su"],a:0,m:"Yağmurla ıslanan toprak / çamur. Porsuk kenarında yağmur sonrası duyulabilir."},en:{q:"In Eskişehir dialect, «ıslama» means…",opts:["Rain-soaked earth, mud","Dried straw","Salty water"],a:0,m:"Wet muddy ground after rain."},de:{q:"Was bedeutet «ıslama» im Dialekt von Eskişehir?",opts:["Vom Regen nasse Erde, Schlamm","Getrocknetes Stroh","Salzwasser"],a:0,m:"Nasser Schlammboden nach Regen."},stop:"adalar"},
+    {tr:{q:"«Ödek» hangi hayvanın yöresel adıdır?",opts:["Ördek","Horoz","Kedi"],a:0,m:"Ödek = ördek. Ağızda ünlü değişimiyle söylenir."},en:{q:"«Ödek» is the local name for which animal?",opts:["Duck","Rooster","Cat"],a:0,m:"Duck — a local pronunciation/form."},de:{q:"«Ödek» ist der regionale Name für welches Tier?",opts:["Ente","Hahn","Katze"],a:0,m:"Ente — regionale Form."}},
+    {tr:{q:"«Tüpürtü» ne demektir?",opts:["Tükürük","Şimşek","Rüzgâr"],a:0,m:"Tüpürtü = tükürük. Yöresel ses taklidi / ağız biçimi."},en:{q:"What does «tüpürtü» mean?",opts:["Spit","Lightning","Wind"],a:0,m:"Spit — a regional form."},de:{q:"Was bedeutet «tüpürtü»?",opts:["Speichel","Blitz","Wind"],a:0,m:"Speichel — regionale Form."}},
+    {tr:{q:"«Evecen» biri nasıldır?",opts:["Aceleci","Çok yavaş","Suskun"],a:0,m:"Evecen = aceleci (Sivrihisar / Bozan ağızlarında derlenmiş). «Çalağan» ile yakın anlamlıdır."},en:{q:"Someone «evecen» is…",opts:["In a hurry","Very slow","Silent"],a:0,m:"Hurried — recorded in Sivrihisar/Bozan dialects."},de:{q:"Jemand «evecen» ist …",opts:["Eilig","Sehr langsam","Schweigsam"],a:0,m:"Eilig — in Sivrihisar/Bozan belegt."}},
+    {tr:{q:"«Eşme» neye denir?",opts:["Kaynak, göz, pınar","Dağ zirvesi","Eski yol"],a:0,m:"Eşme = kaynak / pınar (Seyitgazi yöresi derlemesi). Suyla ilgili duraklarda hatırla."},en:{q:"What is an «eşme»?",opts:["A spring, water source","A mountain peak","An old road"],a:0,m:"A spring / water source (Seyitgazi-area compilation)."},de:{q:"Was ist eine «eşme»?",opts:["Quelle, Wasserstelle","Berggipfel","Alte Straße"],a:0,m:"Eine Quelle (Seyitgazi-Sammlung)."},stop:"kentpark"},
+    {tr:{q:"«Enekeç» kimdir?",opts:["Oyun veya okul arkadaşı","Öğretmen","Komşu dede"],a:0,m:"Enekeç = oyun / okul arkadaşı. Okul bahçesinde «arkadaş» yerine duyulabilen ağız sözü."},en:{q:"Who is an «enekeç»?",opts:["A playmate or school friend","A teacher","A neighbour grandpa"],a:0,m:"A playmate / school friend."},de:{q:"Wer ist ein «enekeç»?",opts:["Spiel- oder Schulfreund","Lehrer","Nachbar-Opa"],a:0,m:"Spielkamerad / Schulfreund."}},
+    {tr:{q:"«Erbi» nedir?",opts:["Yazma, yemeni, başörtüsü","Ayakkabı","Çaydanlık"],a:0,m:"Erbi = yazma / yemeni / başörtüsü (Mihalıççık derlemesi). Geleneksel giyim sözcüğü."},en:{q:"What is «erbi»?",opts:["A headscarf / yemeni","A shoe","A teapot"],a:0,m:"A headscarf (Mihalıççık compilation)."},de:{q:"Was ist «erbi»?",opts:["Kopftuch / Yemeni","Schuh","Teekanne"],a:0,m:"Kopftuch (Mihalıççık-Sammlung)."}},
+    {tr:{q:"«Ernik» neye denir?",opts:["Erimeye başlamış kar","Sert buz","İlk yağmur"],a:0,m:"Ernik = erimeye başlamış kar. Kıştan bahara geçişte kullanılan ağız sözü."},en:{q:"«Ernik» refers to…",opts:["Snow that has started to melt","Hard ice","The first rain"],a:0,m:"Melting snow."},de:{q:"«Ernik» bezeichnet …",opts:["Schmelzenden Schnee","Hartes Eis","Ersten Regen"],a:0,m:"Schmelzender Schnee."}},
+    {tr:{q:"«Esgin» ne demektir?",opts:["Sert esen rüzgâr","Sakin hava","Sıcak sis"],a:0,m:"Esgin = sert esen rüzgâr (Bozan derlemesi). Açık park duraklarında anlatılabilir."},en:{q:"What does «esgin» mean?",opts:["A strong wind","Calm air","Warm mist"],a:0,m:"A strong wind (Bozan compilation)."},de:{q:"Was bedeutet «esgin»?",opts:["Starker Wind","Ruhe Luft","Warmer Nebel"],a:0,m:"Starker Wind (Bozan-Sammlung)."},stop:"aktif"},
+    {tr:{q:"Eskişehir’le özdeş ünlü beyaz taşın adı?",opts:["Lületaşı","Mermer","Obsidyen"],a:0,m:"Lületaşı (sepiolite): Eskişehir’le anılan yumuşak beyaz taş; pipo ve süs eşyası yapılır. Günlük dilde «lüle» ile geçer."},en:{q:"Which famous white stone is tied to Eskişehir?",opts:["Meerschaum (lületaşı)","Marble","Obsidian"],a:0,m:"Meerschaum — soft white stone linked to the city."},de:{q:"Welcher berühmte weiße Stein ist mit Eskişehir verbunden?",opts:["Meerschaum (Lületaşı)","Marmor","Obsidian"],a:0,m:"Meerschaum — weicher weißer Stein der Stadt."},stop:"odunpazari"},
+    {tr:{q:"Eskişehir konuşmasında «geliyo / yapıyo» gibi biçimler neyi gösterir?",opts:["-yor ekinin yumuşayıp kısalması","Hiçbir şey; yanlış yazımdır","İngilizce etkisi"],a:0,m:"Orta Anadolu ağızlarında -yor sıkça -yo’ya yaklaşır: «geliyo». Yazıda standart «geliyor» kalır; ağız konuşma biçimidir."},en:{q:"Forms like «geliyo / yapıyo» in Eskişehir speech show…",opts:["Softening/shortening of the -yor ending","Nothing — just typos","English influence"],a:0,m:"Central Anatolian speech often softens -yor → -yo; writing stays standard."},de:{q:"Formen wie «geliyo / yapıyo» in der Eskişehir-Sprache zeigen …",opts:["Erweichung/Kürzung der Endung -yor","Nichts — nur Tippfehler","Englischen Einfluss"],a:0,m:"In Inneranatolien oft -yor → -yo; Schrift bleibt Standard."}},
+    {tr:{q:"Porsuk kıyısında «gondol» sözü nereden gelir?",opts:["Venedik tarzı kayık turu; şehirsel kültür","Frigce bir kelime","Tren jargonundan"],a:0,m:"Porsuk’taki gondol turu modern kent kültürü; eski ağız sözü değil ama şehrin günlük diline yerleşmiş kültür kelimesidir."},en:{q:"On the Porsuk, «gondol» comes from…",opts:["Venetian-style boat rides in city culture","A Phrygian word","Railway jargon"],a:0,m:"Modern city culture on the Porsuk — not an old dialect word, but everyday local speech."},de:{q:"Woher kommt «gondol» am Porsuk-Ufer?",opts:["Venezianische Bootstouren; Stadtkultur","Ein phrygisches Wort","Bahnjargon"],a:0,m:"Moderne Stadtkultur am Porsuk — kein altes Dialektwort, aber Alltagssprache."},stop:"adalar"}
+  ]
+};
+
+const STICKERS = {otogar:"🚌", kentpark:"🏖️", opera:"🎭", adalar:"🌉", haller:"🛒", vecihi:"✈️", gar:"🚂", devrim:"🚗", sazova:"🏰", aktif:"🏃", ugur:"🌳", eti:"🏺", odunpazari:"🏠", akm:"🎬", askadasi:"💕"};
+const BADGE_DEFS = [
+  {id:"ilk_damga", ic:"🌱", need:1, labelKey:"b_ilk"},
+  {id:"gezgin", ic:"🧭", need:5, labelKey:"b_gezgin"},
+  {id:"hattın_yarısı", ic:"🚌", need:8, labelKey:"b_yari"},
+  {id:"usta", ic:"⭐", need:12, labelKey:"b_usta"},
+  {id:"şehir_aşkı", ic:"🏆", need:15, labelKey:"b_ask"},
+  {id:"yolcu", ic:"🧩", needGame:20, labelKey:"b_yolcu"},
+  {id:"ağız_dostu", ic:"🗣️", needGame:40, labelKey:"b_agiz"}
+];
+function badgeUnlocked(b){
+  if(b.needGame!=null) return (S.game||0) >= b.needGame;
+  return doneCount() >= b.need;
+}
+function newlyUnlockedBadges(){
+  const out=[];
+  if(!S.badgesShown) S.badgesShown={};
+  BADGE_DEFS.forEach(b=>{
+    if(badgeUnlocked(b) && !S.badgesShown[b.id]){ out.push(b); S.badgesShown[b.id]=true; }
+  });
+  if(out.length) save();
+  return out;
+}
+
+/* ═══════════════════════ I18N ═══════════════════════ */
+const I18N = {
+  tr:{explore:"Keşfet",passport:"Pasaport",bus:"Otobüs",me:"Ben",roadGame:"Yol Oyunu",busMode:"Otobüs Modu",back:"Geri",open:"Aç",nextStop:"Sıradaki durak",fAll:"Tümü",fTodo:"Kalan",fDone:"Tamamlanan",fFav:"Favoriler",fact:"Bilgi",fun:"Biliyor muydun?",legend:"Efsane / anlatı",legendNote:"Sözlü gelenek. Tarih kaydı değil; kulaktan kulağa gelen anlatıdır.",dialect:"Eskişehir Ağzı",dialectNote:"Yöresel söz varlığı; standart Türkçe karşılığıyla birlikte öğrenilir.",tasks:"Görevler",points:"Puan",stops:"Durak",photos:"Fotoğraf",share:"Paylaş",emptyPass:"İlk damga Otogar'da seni bekliyor.",gRiddle:"Bilmece",gTruth:"Gerçek mi?",gIdiom:"Eskişehir Ağzı",yourName:"Adın",save:"Kaydet",lang:"Dil / Language",bigText:"Büyük yazı",sim:"Konum simülasyonu (demo)",install:"Ana ekrana ekle",add:"Ekle",iosHint:"iPhone'da: Paylaş → \"Ana Ekrana Ekle\".",reset:"İlerlemeyi sıfırla",about:"Özel Atayurt Okulları · TÜBİTAK 2204-B · 2026 Eskişehir Yılı",developer:"Geliştirici: Asım Akçay",mayorRole:"Eskişehir Büyükşehir Belediye Başkanı",mayorNote:"2026 Eskişehir Yılı kimliğiyle şehrin kültür ve turizm hattı OtobEs26 bu uygulamada tanıtılır. Önceki başkan Yılmaz Büyükerşen (1999–2024), balmumu müzesinin kurucusudur.",gpsDetail:"Konum durumu",gpsSimHint:"Simülasyon açık — gerçek GPS kapalı",gpsNoFix:"Konum alınamadı",gpsAccWarn:"GPS doğruluğu düşük (±%d m) — görev açılışı yaklaşıktır",skip:"Atla",
+    gpsOn:"GPS açık",gpsOff:"GPS kapalı",gpsSim:"Simülasyon",gpsWait:"Konum bekleniyor…",gpsDenied:"Konum izni yok",
+    near:"yakınındasın · görevler açık",away:"uzaktasın",walk:"~%d dk yürüyüş",openTasks:"görevler açık",lockedTasks:"500 m içine gir",otobes:"OtobEs26 durağı",
+    tPlace:"Yeri çek",tSelfie:"Yerle selfie",tOpen:"Görev açık",tDone:"Tamam",tLock:"Kilitli",tFirst:"Önce ilk görevi tamamla",
+    startTask:"Görevi başlat",allDone:"Bu durak tamamlandı",teleport:"Buraya ışınlan (demo)",directions:"Yol tarifi",
+    reward:"Damga kazandın!",taskDone:"Görev tamam!",stampNeed:"Damga için yer fotoğrafı + selfie gerekir.",storageFull:"Depolama dolu — bazı veriler kaydedilemedi.",bonus:"+5 durak bonusu",cont:"Devam",pts:"puan",
+    camFail:"Kamera açılamadı. Bu uygulamayı HTTPS adresinden açın (belediye sitesi veya güvenli sunucu). file:// ile çalışmaz. Ya da galeriden seç.",gallery:"Galeriden seç",cancel:"Vazgeç",
+    photoLimit:"Fotoğraf sınırına ulaşıldı (30). Görev sayıldı ama fotoğraf saklanmadı.",
+    saved:"Kaydedildi",copied:"Panoya kopyalandı",resetQ:"Tüm ilerleme, fotoğraflar ve puanlar silinsin mi?",yes:"Evet, sil",
+    showAns:"Cevabı gör",checkAns:"Kontrol et",typeAns:"Cevabını yaz",hintAns:"İpucu: cevabı gör",next:"Sonraki",shuffle:"Yeni tur karıştır",roundDone:"Bu turun soruları bitti.",roundScore:"Tur puanı",goStop:"Bu durağa git",
+    truth:"Gerçek",fake:"Uydurma",right:"Doğru!",wrong:"Yanlış",
+    shareText:"%s Cebimdeki Eskişehir'de %d puan topladı, %d/15 durağı tamamladı! 🚌 #Eskişehir2026",
+    ob1t:"Cebimdeki Eskişehir'e hoş geldin",ob1:"OtobEs26 turistik otobüsüyle 15 durağı gez, her durakta bilgi öğren, görev yap, damga topla.",
+    ob2t:"Nasıl oynanır?",ob2:"Bir durağa 500 m yaklaşınca iki görev açılır: yeri fotoğrafla ve yerle selfie çek. Her görev 10 puan, durak tamamlanınca +5 bonus. Otobüsteyken Yol Oyunu'nda bilmece çöz.",
+    ob3t:"Konum izni neden?",ob3:"Yalnızca hangi durağa yakın olduğunu anlamak için. Konumun cihazdan dışarı çıkmaz, internet gerekmez. Bir sonraki adımda tarayıcı izin soracak.",
+    obName:"Adın ne? (pasaporta yazılacak)",start:"Başla",
+    guidePlay:"🎧 Sesli rehber",guidePlaying:"Rehber konuşuyor…",
+    notifyNear:"Durağa yaklaşınca bildirim",notifyHint:"Uygulama açıkken çalışır",
+    notifyOn:"Bildirimler açıldı",notifyDenied:"Bildirim izni reddedildi",
+    nearToast:"Bir durağa yaklaştın — görevler açık",
+    badges:"Rozetler",badgeNew:"Yeni rozet:",
+    b_ilk:"İlk damga",b_gezgin:"Gezgin",b_yari:"Hattın yarısı",b_usta:"Usta",b_ask:"Şehir aşkı",b_yolcu:"Yolcu",b_agiz:"Ağız dostu",
+    foodTip:"Yakında ye",lookTip:"Ne tarafa bak",nextAlong:"Sıradaki",stopLabel:"Durak",emptyFav:"Bir durakta ★'a dokun, burada birikir.",emptyAll:"Bütün duraklar tamam — hattı bitirdin!",offlineReady:"Çevrimdışı hazır",offlineNow:"Çevrimdışı",onlineNow:"Çevrimiçi",installDone:"Uygulama yüklü ✓",updateReady:"Güncelleme hazır — yenile",sourceLine:"Kaynak: Eskişehir Büyükşehir Belediyesi, müze kayıtları. Koordinatlar yaklaşıktır."
+  },
+  en:{explore:"Explore",passport:"Passport",bus:"Bus",me:"Me",roadGame:"Road Game",busMode:"Bus Mode",back:"Back",open:"Open",nextStop:"Next stop",fAll:"All",fTodo:"Remaining",fDone:"Completed",fFav:"Favourites",fact:"About",fun:"Did you know?",legend:"Legend / oral tale",legendNote:"Oral tradition — not a historical record.",dialect:"Eskişehir Dialect",dialectNote:"Regional vocabulary — learn it together with the standard Turkish meaning.",tasks:"Tasks",points:"Points",stops:"Stops",photos:"Photos",share:"Share",emptyPass:"Your first stamp is waiting at the Bus Terminal.",gRiddle:"Riddle",gTruth:"True or not?",gIdiom:"Eskişehir Dialect",yourName:"Your name",save:"Save",lang:"Dil / Language",bigText:"Large text",sim:"Location simulation (demo)",install:"Add to home screen",add:"Add",iosHint:"On iPhone: Share → \"Add to Home Screen\".",reset:"Reset progress",about:"Özel Atayurt Schools · TÜBİTAK 2204-B · Eskişehir Year 2026",developer:"Developer: Asım Akçay",mayorRole:"Mayor of Eskişehir Metropolitan Municipality",mayorNote:"Under the Eskişehir Year 2026 identity, the city's culture and tourism loop OtobEs26 is featured in this app. Former mayor Yılmaz Büyükerşen (1999–2024) founded the wax museum.",gpsDetail:"Location status",gpsSimHint:"Simulation on — real GPS off",gpsNoFix:"No location fix yet",gpsAccWarn:"Low GPS accuracy (±%d m) — unlocks are approximate",skip:"Skip",
+    gpsOn:"GPS on",gpsOff:"GPS off",gpsSim:"Simulation",gpsWait:"Waiting for location…",gpsDenied:"Location denied",
+    near:"you're nearby · tasks open",away:"away",walk:"~%d min walk",openTasks:"tasks open",lockedTasks:"get within 500 m",otobes:"OtobEs26 stop",
+    tPlace:"Photograph the place",tSelfie:"Selfie with the place",tOpen:"Task open",tDone:"Done",tLock:"Locked",tFirst:"Finish the first task first",
+    startTask:"Start task",allDone:"Stop completed",teleport:"Teleport here (demo)",directions:"Directions",
+    reward:"Stamp earned!",taskDone:"Task done!",stampNeed:"Stamp needs place photo + selfie.",storageFull:"Storage full — some data could not be saved.",bonus:"+5 stop bonus",cont:"Continue",pts:"points",
+    camFail:"Camera blocked on file://. Open this app from an HTTPS address (municipality site or secure server). Or pick from gallery.",gallery:"Pick from gallery",cancel:"Cancel",
+    photoLimit:"Photo limit reached (30). Task counted but photo not stored.",
+    saved:"Saved",copied:"Copied to clipboard",resetQ:"Delete all progress, photos and points?",yes:"Yes, delete",
+    showAns:"Show answer",checkAns:"Check",typeAns:"Type your answer",hintAns:"Hint: show answer",next:"Next",shuffle:"Shuffle new round",roundDone:"This round is over.",roundScore:"Round score",goStop:"Go to this stop",
+    truth:"True",fake:"Fake",right:"Correct!",wrong:"Wrong",
+    shareText:"%s scored %d points and completed %d/15 stops in Cebimdeki Eskişehir! 🚌 #Eskisehir2026",
+    ob1t:"Welcome to Eskişehir in Your Pocket",ob1:"Ride the OtobEs26 tourist bus, learn something at each of 15 stops, do tasks, collect stamps.",
+    ob2t:"How to play",ob2:"Within 500 m of a stop two tasks unlock: photograph the place and take a selfie with it. Each task is 10 points, +5 bonus per completed stop. On the bus, play riddles in Road Game.",
+    ob3t:"Why location?",ob3:"Only to know which stop you're near. Your location never leaves the device and no internet is needed. The browser will ask for permission next.",
+    obName:"Your name (goes in the passport)",start:"Start",
+    guidePlay:"🎧 Audio guide",guidePlaying:"Guide playing…",
+    notifyNear:"Notify when near a stop",notifyHint:"Works while the app is open",
+    notifyOn:"Notifications enabled",notifyDenied:"Notification permission denied",
+    nearToast:"You're near a stop — tasks unlocked",
+    badges:"Badges",badgeNew:"New badge:",
+    b_ilk:"First stamp",b_gezgin:"Explorer",b_yari:"Halfway",b_usta:"Master",b_ask:"City love",b_yolcu:"Rider",b_agiz:"Dialect friend",
+    foodTip:"Eat nearby",lookTip:"What to look at",nextAlong:"Next",stopLabel:"Stop",emptyFav:"Tap ★ on a stop to save it here.",emptyAll:"All stops done — well travelled!",offlineReady:"Ready offline",offlineNow:"Offline",onlineNow:"Online",installDone:"App installed ✓",updateReady:"Update ready — refresh",sourceLine:"Source: Eskişehir Metropolitan Municipality, museum records. Coordinates approximate."
+  },
+  de:{
+    explore:"Entdecken",passport:"Pass",bus:"Bus",me:"Ich",roadGame:"Straßen-Spiel",busMode:"Bus-Modus",back:"Zurück",open:"Öffnen",nextStop:"Nächster Halt",fAll:"Alle",fTodo:"Offen",fDone:"Erledigt",fFav:"Favoriten",fact:"Info",fun:"Schon gewusst?",legend:"Legende / Erzählung",legendNote:"Mündliche Überlieferung — kein historischer Beleg.",dialect:"Eskişehir-Dialekt",dialectNote:"Regionales Wortgut — zusammen mit der Standardbedeutung lernen.",tasks:"Aufgaben",points:"Punkte",stops:"Halt",photos:"Foto",share:"Teilen",emptyPass:"Dein erster Stempel wartet am Busbahnhof.",gRiddle:"Rätsel",gTruth:"Wahr oder nicht?",gIdiom:"Eskişehir-Dialekt",yourName:"Dein Name",save:"Speichern",lang:"Dil / Language / Sprache",bigText:"Große Schrift",sim:"Standort-Simulation (Demo)",install:"Zum Startbildschirm",add:"Hinzufügen",iosHint:"Auf dem iPhone: Teilen → \"Zum Home-Bildschirm\".",reset:"Fortschritt zurücksetzen",about:"Özel Atayurt Schulen · TÜBİTAK 2204-B · Eskişehir-Jahr 2026",developer:"Entwickler: Asım Akçay",mayorRole:"Oberbürgermeister von Eskişehir",mayorNote:"Unter der Identität Eskişehir-Jahr 2026 stellt diese App die Kultur- und Tourismuslinie OtobEs26 vor. Der frühere Bürgermeister Yılmaz Büyükerşen (1999–2024) gründete das Wachsmuseum.",gpsDetail:"Standortstatus",gpsSimHint:"Simulation an — echtes GPS aus",gpsNoFix:"Kein Standort",gpsAccWarn:"GPS-Genauigkeit niedrig (±%d m) — Freischaltung ungefähr",skip:"Überspringen",
+    gpsOn:"GPS an",gpsOff:"GPS aus",gpsSim:"Simulation",gpsWait:"Warte auf Standort…",gpsDenied:"Standort verweigert",
+    near:"in der Nähe · Aufgaben offen",away:"entfernt",walk:"~%d Min. zu Fuß",openTasks:"Aufgaben offen",lockedTasks:"innerhalb 500 m kommen",otobes:"OtobEs26-Halt",
+    tPlace:"Ort fotografieren",tSelfie:"Selfie mit dem Ort",tOpen:"Aufgabe offen",tDone:"Fertig",tLock:"Gesperrt",tFirst:"Zuerst erste Aufgabe erledigen",
+    startTask:"Aufgabe starten",allDone:"Halt abgeschlossen",teleport:"Hierher teleportieren (Demo)",directions:"Wegbeschreibung",
+    reward:"Stempel verdient!",taskDone:"Aufgabe erledigt!",stampNeed:"Stempel braucht Ort-Foto + Selfie.",storageFull:"Speicher voll — Daten konnten nicht gespeichert werden.",bonus:"+5 Halt-Bonus",cont:"Weiter",pts:"Punkte",
+    camFail:"Kamera bei file:// blockiert. Öffne diese App über eine HTTPS-Adresse (Gemeinde-Website oder sicherer Server). Oder wähle aus der Galerie.",gallery:"Aus Galerie",cancel:"Abbrechen",
+    photoLimit:"Fotolimit erreicht (30). Aufgabe gezählt, Foto nicht gespeichert.",
+    saved:"Gespeichert",copied:"In Zwischenablage kopiert",resetQ:"Allen Fortschritt, Fotos und Punkte löschen?",yes:"Ja, löschen",
+    showAns:"Antwort zeigen",checkAns:"Prüfen",typeAns:"Antwort eingeben",hintAns:"Tipp: Antwort zeigen",next:"Weiter",shuffle:"Neue Runde mischen",roundDone:"Diese Runde ist vorbei.",roundScore:"Rundenpunktzahl",goStop:"Zu diesem Halt",
+    truth:"Wahr",fake:"Falsch",right:"Richtig!",wrong:"Falsch",
+    shareText:"%s hat in Cebimdeki Eskişehir %d Punkte und %d/15 Halte geschafft! 🚌 #Eskisehir2026",
+    ob1t:"Willkommen bei Eskişehir in der Tasche",ob1:"Fahre mit dem OtobEs26-Touristenbus, lerne an 15 Halten, erledige Aufgaben, sammle Stempel.",
+    ob2t:"So spielt man",ob2:"Innerhalb von 500 m öffnen sich zwei Aufgaben: Ort fotografieren und Selfie. Je 10 Punkte, +5 Bonus pro Halt. Im Bus Rätsel im Straßen-Spiel.",
+    ob3t:"Warum Standort?",ob3:"Nur um zu wissen, welchem Halt du nah bist. Der Standort bleibt auf dem Gerät, kein Internet nötig. Der Browser fragt als Nächstes.",
+    obName:"Dein Name (kommt in den Pass)",start:"Start",
+    guidePlay:"🎧 Audio-Guide",guidePlaying:"Guide spricht…",
+    notifyNear:"Benachrichtigen bei Nähe",notifyHint:"Funktioniert bei geöffneter App",
+    notifyOn:"Benachrichtigungen an",notifyDenied:"Benachrichtigung verweigert",
+    nearToast:"Du bist nah an einem Halt — Aufgaben offen",
+    badges:"Abzeichen",badgeNew:"Neues Abzeichen:",
+    b_ilk:"Erster Stempel",b_gezgin:"Entdecker",b_yari:"Halbzeit",b_usta:"Meister",b_ask:"Stadtliebe",b_yolcu:"Fahrgast",b_agiz:"Dialektfreund",
+    foodTip:"In der Nähe essen",lookTip:"Wohin schauen",nextAlong:"Als Nächstes",stopLabel:"Halt",emptyFav:"Tippe ★ an einem Halt, um ihn hier zu speichern.",emptyAll:"Alle Halte erledigt — gut gereist!",offlineReady:"Offline bereit",offlineNow:"Offline",onlineNow:"Online",installDone:"App installiert ✓",updateReady:"Update bereit — neu laden",sourceLine:"Quelle: Großstadtgemeinde Eskişehir, Museumsakten. Koordinaten ungefähr."
+  }
+};
+
+/* ═══════════════════════ STATE ═══════════════════════ */
+const KEY="ce.v2", PHOTO_MAX=30, OPEN_M=500, CLOSE_M=650;
+let S = load();
+function load(){ try{ return Object.assign({name:"",lang:"tr",big:false,sim:false,notify:false,onboarded:false,tasks:{},photos:{},favs:[],pts:0,game:0,badgesShown:{},lastTab:"explore",lastStopId:null}, JSON.parse(localStorage.getItem(KEY)||"{}")); }catch(e){ return {name:"",lang:"tr",big:false,sim:false,notify:false,onboarded:false,tasks:{},photos:{},favs:[],pts:0,game:0,badgesShown:{},lastTab:"explore",lastStopId:null}; } }
+function save(){
+  try{
+    localStorage.setItem(KEY, JSON.stringify(S));
+    return true;
+  }catch(e){
+    try{
+      const keys=Object.keys(S.photos||{});
+      if(keys.length){
+        delete S.photos[keys[0]];
+        localStorage.setItem(KEY, JSON.stringify(S));
+        toast(t("photoLimit"));
+        return true;
+      }
+    }catch(e2){}
+    toast(t("storageFull")||"Depolama dolu");
+    return false;
+  }
+}
+if(!S.badgesShown) S.badgesShown={};
+if(typeof S.notify!=="boolean") S.notify=false;
+if(!S.lastTab) S.lastTab="explore";
+if(S.lastStopId===undefined) S.lastStopId=null;
+const t = (k)=> ((I18N[S.lang]||I18N.tr)[k] ?? I18N.tr[k] ?? k);
+const fmt=(s,...a)=>{ let i=0; return s.replace(/%[sd]/g,()=>a[i++]); };
+const L = (stop)=> stop[S.lang] || stop.tr;
+const $ = (id)=>document.getElementById(id);
+
+let pos=null, posAcc=null, watchId=null, gpsState="wait", nearId=null, current=null, deferredInstall=null;
+
+/* ═══════════════════════ GEO ═══════════════════════ */
+function dist(a,b){ const R=6371000,toR=x=>x*Math.PI/180; const dLat=toR(b.lat-a.lat),dLng=toR(b.lng-a.lng); const h=Math.sin(dLat/2)**2+Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLng/2)**2; return 2*R*Math.asin(Math.sqrt(h)); }
+function distTo(stop){ return pos?Math.round(dist(pos,stop)):null; }
+function isOpen(stop){
+  const d=distTo(stop); if(d==null) return false;
+  // If accuracy is very poor (>150m), still allow unlock by raw distance but UI will warn
+  const thr = nearId===stop.id ? CLOSE_M : OPEN_M;
+  return d<=thr;
+}
+function fmtDist(d){ if(d==null) return "—"; return d<1000? d+" m" : (d/1000).toFixed(1)+" km"; }
+function walkMin(d){ return Math.max(1,Math.round(d/80)); }
+
+function startGPS(){
+  if(S.sim){ gpsState="sim"; if(watchId!=null){navigator.geolocation.clearWatch(watchId);watchId=null;} renderGpsChip(); return; }
+  if(!navigator.geolocation){ gpsState="off"; renderGpsChip(); return; }
+  gpsState="wait"; renderGpsChip();
+  if(watchId!=null) navigator.geolocation.clearWatch(watchId);
+  watchId=navigator.geolocation.watchPosition(p=>{
+    pos={lat:p.coords.latitude,lng:p.coords.longitude};
+    posAcc = (typeof p.coords.accuracy==="number") ? Math.round(p.coords.accuracy) : null;
+    gpsState="on"; onPos();
+  },e=>{ gpsState= e.code===1?"denied":"off"; renderGpsChip(); },
+  {enableHighAccuracy:true, maximumAge:5000, timeout:25000});
+}
+function onPos(){
+  const stopsD=DATA.stops.map(s=>({s,d:distTo(s)})).sort((a,b)=>a.d-b.d);
+  const n=stopsD[0];
+  const threshold = nearId===n.s.id?CLOSE_M:OPEN_M;
+  const newNear = n.d<=threshold ? n.s.id : null;
+  if(newNear && newNear!==nearId){
+    if(navigator.vibrate) navigator.vibrate(120);
+    const stop=DATA.stops.find(s=>s.id===newNear);
+    if(stop){
+      notifyNear(stop);
+      if(!document.hidden) toast(t("nearToast")+": "+L(stop).name);
+    }
+  }
+  nearId=newNear;
+  renderGpsChip(); renderExplore(); if(current) renderStop(current);
+  if(document.querySelector(".screen.on")?.id==="s-me") renderMe();
+}
+function renderGpsChip(){
+  const c=$("gpsChip"); const map={on:"gpsOn",off:"gpsOff",sim:"gpsSim",wait:"gpsWait",denied:"gpsDenied"};
+  let label=t(map[gpsState]);
+  if(gpsState==="on" && posAcc!=null) label="GPS · ±"+posAcc+" m";
+  c.textContent=label; c.className="chip"+(gpsState==="on"||gpsState==="sim"?" teal":gpsState==="denied"?" coral":"");
+}
+
+/* ═══════════════════════ NAV ═══════════════════════ */
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("on",s.id==="s-"+id));
+  document.querySelectorAll("nav button").forEach(b=>b.toggleAttribute("aria-current",false));
+  const nb=document.querySelector(`nav button[data-nav="${id==="stop"?"explore":id}"]`); if(nb) nb.setAttribute("aria-current","page");
+  window.scrollTo(0,0); speechSynthesis&&speechSynthesis.cancel();
+  ({explore:renderExplore,passport:renderPassport,bus:renderGame,me:renderMe})[id]?.();
+  if(id==="explore"||id==="passport"||id==="bus"||id==="me"){
+    if(S.lastTab!==id){ S.lastTab=id; save(); }
+  } else if(id==="stop" && current){
+    S.lastStopId=current.id; S.lastTab="stop"; save();
+  }
+}
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>show(b.dataset.nav));
+
+/* ═══════════════════════ EXPLORE ═══════════════════════ */
+let filter="all";
+document.querySelectorAll(".filters button").forEach(b=>b.onclick=()=>{ filter=b.dataset.f; document.querySelectorAll(".filters button").forEach(x=>x.setAttribute("aria-pressed",x===b)); renderExplore(); });
+function taskState(id,k){ return S.tasks[id]?.[k]||false; }
+function stopDone(s){ return taskState(s.id,"place")&&taskState(s.id,"selfie"); }
+function doneCount(){ return DATA.stops.filter(stopDone).length; }
+
+function renderExplore(){
+  $("explSub").textContent=`OtobEs26 · ${doneCount()}/15`;
+  let warn=$("secureWarn");
+  if(!warn){ warn=document.createElement("div"); warn.id="secureWarn"; warn.className="secure-warn"; $("s-explore").insertBefore(warn, $("nearBanner")); }
+  if(insecureFile()){ warn.style.display="block"; warn.innerHTML=`Bu uygulamayı HTTPS adresinden açın (belediye sitesi veya güvenli sunucu). file:// ile çalışmaz.`; }
+  else warn.style.display="none";
+  const near=DATA.stops.find(s=>s.id===nearId);
+  const nb=$("nearBanner"); nb.classList.toggle("on",!!near);
+  if(near){ $("nearName").textContent=L(near).name; $("nearText").textContent=fmtDist(distTo(near))+" · "+t("near"); $("nearGo").onclick=()=>openStop(near); }
+  const nextIdx=DATA.stops.findIndex(s=>!stopDone(s));
+  const nc=$("nextCard");
+  if(nextIdx>=0){
+    const ns=DATA.stops[nextIdx]; const d=distTo(ns);
+    nc.style.display="block";
+    $("nextName").textContent=(nextIdx+1)+". "+L(ns).name;
+    const nd=$("nextDist"); if(nd) nd.textContent=d!=null?fmtDist(d):"—";
+    $("nextWalk").textContent=d!=null?fmt(t("walk"),walkMin(d)):"OtobEs26";
+    nc.onclick=()=>openStop(ns);
+  } else nc.style.display="none";
+  const list=$("stopList"); list.innerHTML="";
+  const items=DATA.stops.filter(s=> filter==="all" || (filter==="done"&&stopDone(s)) || (filter==="todo"&&!stopDone(s)) || (filter==="fav"&&S.favs.includes(s.id)));
+  if(!items.length){ list.innerHTML=`<div class="empty"><span>${filter==="fav"?"★":"🎉"}</span><p>${filter==="fav"?t("emptyFav"):t("emptyAll")}</p></div>`; return; }
+  items.forEach(s=>{
+    const i=DATA.stops.indexOf(s), d=distTo(s), done=stopDone(s), open=isOpen(s), n=taskState(s.id,"place")+taskState(s.id,"selfie");
+    const el=document.createElement("div"); el.className="card stop"+(nearId===s.id?" near":""); el.tabIndex=0; el.setAttribute("role","button");
+    const ph=S.photos[s.id+".place"];
+    el.innerHTML=`${ph?`<img class="list-photo" src="${ph}" alt="">`:`<div class="num${done?" done":""}">${done?"✓":i+1}</div>`}
+      <div class="info"><div class="name">${L(s).name}</div><div class="small muted">${L(s).tag}${d!=null?" · "+fmtDist(d)+" · "+fmt(t("walk"),walkMin(d)):""}</div></div>
+      <span class="chip ${open&&!done?"coral":done?"teal":""}">${done?"2/2":open?t("openTasks"):n+"/2"}</span>
+      <button class="fav${S.favs.includes(s.id)?" on":""}" aria-label="favori">★</button>`;
+    el.querySelector(".fav").onclick=(e)=>{ e.stopPropagation(); toggleFav(s.id); renderExplore(); };
+    el.onclick=()=>openStop(s); el.onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();openStop(s);} };
+    list.appendChild(el);
+  });
+}
+function toggleFav(id){ const i=S.favs.indexOf(id); i>=0?S.favs.splice(i,1):S.favs.push(id); save(); }
+
+/* ═══════════════════════ STOP DETAIL ═══════════════════════ */
+function openStop(s){ current=s; show("stop"); renderStop(s); }
+$("stopBack").onclick=()=>{ current=null; show("explore"); };
+function renderStop(s){
+  const i=DATA.stops.indexOf(s), d=distTo(s), open=isOpen(s), p=taskState(s.id,"place"), se=taskState(s.id,"selfie");
+  $("stopIdx").textContent=`${t("stopLabel")} ${i+1} / 15`;
+  $("stopName").textContent=L(s).name; $("stopTag").textContent=L(s).tag; const ot=$("stopOtobes"); if(ot){ ot.textContent=t("otobes"); }
+  $("stopFact").textContent=L(s).fact; $("stopFun").textContent=L(s).fun;
+  const leg=L(s).legend; const box=$("stopLegendBox");
+  if(box){
+    if(leg){
+      box.style.display="block";
+      box.setAttribute("aria-hidden","false");
+      $("stopLegend").textContent=leg;
+      $("stopLegendNote").textContent=t("legendNote");
+      const title=box.querySelector("[data-i18n=legend]"); if(title) title.textContent=t("legend");
+    } else {
+      box.style.display="none";
+      box.setAttribute("aria-hidden","true");
+    }
+  }
+  const dia=L(s).dialect; const dbox=$("stopDialectBox");
+  if(dbox){
+    if(dia){
+      dbox.style.display="block";
+      dbox.setAttribute("aria-hidden","false");
+      $("stopDialect").textContent=dia;
+      $("stopDialectNote").textContent=t("dialectNote");
+      const dtitle=dbox.querySelector("[data-i18n=dialect]"); if(dtitle) dtitle.textContent=t("dialect");
+    } else {
+      dbox.style.display="none";
+      dbox.setAttribute("aria-hidden","true");
+    }
+  }
+  const food=L(s).food; const fbox=$("stopFoodBox");
+  if(fbox){
+    if(food){ fbox.style.display="block"; fbox.setAttribute("aria-hidden","false"); $("stopFood").textContent=food; const ft=fbox.querySelector("[data-i18n=foodTip]"); if(ft) ft.textContent=t("foodTip"); }
+    else { fbox.style.display="none"; fbox.setAttribute("aria-hidden","true"); }
+  }
+  const look=L(s).look; const lbox=$("stopLookBox");
+  if(lbox){
+    if(look){ lbox.style.display="block"; lbox.setAttribute("aria-hidden","false"); $("stopLook").textContent=look; const lt=lbox.querySelector("[data-i18n=lookTip]"); if(lt) lt.textContent=t("lookTip"); }
+    else { lbox.style.display="none"; lbox.setAttribute("aria-hidden","true"); }
+  }
+  $("stopSource").textContent=t("sourceLine");
+  const hero=$("stopHero"); hero.querySelectorAll("img").forEach(x=>x.remove());
+  const ph=S.photos[s.id+".place"]; if(ph){ const im=document.createElement("img"); im.src=ph; im.alt=""; hero.prepend(im); }
+  $("stopDist").textContent = d==null ? (gpsState==="denied"?t("gpsDenied"):t("gpsWait")) : (open? fmtDist(d)+" · "+t("near") : fmtDist(d)+" "+t("away")+" · "+t("lockedTasks"));
+  const nl=$("stopNextLine");
+  if(nl){
+    const ni=DATA.stops.findIndex(x=>!stopDone(x) && x.id!==s.id);
+    const ni2 = ni>=0 ? ni : DATA.stops.findIndex((x,idx)=>idx>i && !stopDone(x));
+    const nextS = (ni>=0?DATA.stops[ni]:null) || (i+1<DATA.stops.length?DATA.stops[i+1]:null);
+    if(nextS && nextS.id!==s.id){
+      const nd=distTo(nextS);
+      nl.style.display="block";
+      nl.textContent=t("nextAlong")+": "+L(nextS).name+(nd!=null?" · "+fmtDist(nd):"");
+    } else { nl.style.display="none"; nl.textContent=""; }
+  }
+  $("stopFav").classList.toggle("on",S.favs.includes(s.id)); $("stopFav").onclick=()=>{ toggleFav(s.id); renderStop(s); };
+  $("stopTts").onclick=()=>playGuide(s);
+  const gb=$("guideBtn"); if(gb){ gb.textContent=t("guidePlay"); gb.onclick=()=>playGuide(s); }
+  $("stopTaskCount").textContent=(p+se)+"/2";
+  const tl=$("taskList"); tl.innerHTML="";
+  const placeLabel=L(s).photoPlace||t("tPlace");
+  const selfieLabel=L(s).photoSelfie||t("tSelfie");
+  [["place","📷",placeLabel,p, open],["selfie","🤳",selfieLabel,se, open&&p]].forEach(([k,ic,label,done,avail])=>{
+    const cls= done?"done":avail?"open":"lock";
+    const sub= done?t("tDone")+" · +10": !open?t("lockedTasks"): k==="selfie"&&!p?t("tFirst"):"+10 "+t("pts");
+    const row=document.createElement("div");
+    row.className="task "+cls;
+    row.innerHTML=`<div class="ic">${done?"✓":ic}</div><div class="t"><b>${label}</b><div class="small muted">${sub}</div></div><span class="state">${done?t("tDone"):avail?t("tOpen"):t("tLock")}</span>`;
+    if(avail && !done) row.onclick=()=>capture(s,k);
+    tl.appendChild(row);
+  });
+  const btn=$("stopAction"); btn.className="btn teal";
+  if(p&&se){ btn.textContent="✓ "+t("allDone"); btn.className="btn ghost"; btn.onclick=()=>show("passport"); }
+  else if(open){ btn.textContent="📷 "+t("startTask"); btn.onclick=()=>capture(s, p?"selfie":"place"); }
+  else if(S.sim){ btn.textContent="⚡ "+t("teleport"); btn.className="btn coral"; btn.onclick=()=>{ pos={lat:s.lat,lng:s.lng}; posAcc=5; onPos(); }; }
+  else { btn.textContent="🧭 "+t("directions"); btn.className="btn ghost"; btn.onclick=()=>window.open(`https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}&travelmode=walking`); }
+}
+function guideText(s){
+  const loc=L(s);
+  const parts=[loc.name];
+  if(loc.tag) parts.push(loc.tag);
+  if(loc.fact) parts.push(loc.fact);
+  if(loc.fun) parts.push(loc.fun);
+  if(loc.legend){
+    const first=(loc.legend.split(/[.!?]+/)[0]||"").trim();
+    if(first) parts.push(first+".");
+  }
+  let txt=parts.filter(Boolean).join(". ").replace(/\.+/g,".").replace(/\s+/g," ").trim();
+  const words=txt.split(/\s+/);
+  if(words.length>70) txt=words.slice(0,70).join(" ")+".…";
+  if(words.length<12 && loc.fact) txt=loc.name+". "+loc.fact;
+  return txt;
+}
+function forSpeech(txt){
+  if(!txt) return "";
+  let s=String(txt);
+  s=s.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu," ");
+  s=s.replace(/[«»""„"‹›]/g,'"');
+  const map=[
+    [/OtobEs26/gi,"Otobes yirmi altı"],
+    [/Odunpazarı/gi,"Odun pazarı"],
+    [/Lületaşı/gi,"lüle taşı"],
+    [/Çibörek|çiğ börek/gi,"çi börek"],
+    [/Vecihi Hürkuş/gi,"Vecihi Hür kuş"],
+    [/Dorylaion/gi,"Dorilaion"],
+    [/Büyükerşen/gi,"Büyükerşen"],
+    [/UNESCO/gi,"unesco"],
+    [/GPS/gi,"G P S"],
+    [/YHT/gi,"yüksek hızlı tren"],
+    [/AKM/gi,"A K M"],
+    [/\bm\b(?= ·| away| uzakt| entfernt|,|\.|$)/gi," metre"],
+    [/(\d+)\s*m\b/gi,"$1 metre"],
+    [/(\d+)\s*km\b/gi,"$1 kilometre"],
+    [/±/g," artı eksi "],
+    [/·/g,", "],
+    [/#\w+/g," "],
+  ];
+  map.forEach(([re,rep])=>{ s=s.replace(re,rep); });
+  s=s.replace(/«([^»]+)»/g,"$1");
+  s=s.replace(/["']([^"']{1,24})["']/g,"$1");
+  s=s.replace(/\s+/g," ").replace(/\s+([,.!?;:])/g,"$1").trim();
+  return s;
+}
+function speechLang(){
+  return S.lang==="en"?"en-US":S.lang==="de"?"de-DE":"tr-TR";
+}
+function pickVoice(lang){
+  try{
+    const voices=speechSynthesis.getVoices()||[];
+    if(!voices.length) return null;
+    const pref=lang.slice(0,2).toLowerCase();
+    const pool=voices.filter(v=>(v.lang||"").toLowerCase().startsWith(pref));
+    const score=v=>{
+      const n=(v.name||"");
+      let s=0;
+      if(/google/i.test(n)) s+=5;
+      if(/microsoft/i.test(n)) s+=4;
+      if(/yelda|tolga|emel|filiz/i.test(n)) s+=6;
+      if(/neural|natural|enhanced/i.test(n)) s+=2;
+      if(v.localService) s+=1;
+      return s;
+    };
+    const ranked=(pool.length?pool:voices).slice().sort((a,b)=>score(b)-score(a));
+    return ranked[0]||null;
+  }catch(e){ return null; }
+}
+function splitForSpeech(txt){
+  const clean=forSpeech(txt);
+  if(!clean) return [];
+  const parts=clean.split(/(?<=[.!?…])\s+/).filter(Boolean);
+  const chunks=[]; let buf="";
+  parts.forEach(p=>{
+    if((buf+" "+p).trim().split(/\s+/).length>28 && buf){ chunks.push(buf.trim()); buf=p; }
+    else buf=(buf?buf+" ":"")+p;
+  });
+  if(buf.trim()) chunks.push(buf.trim());
+  if(chunks.length>3){
+    const n=Math.ceil(chunks.length/3), out=[];
+    for(let i=0;i<chunks.length;i+=n) out.push(chunks.slice(i,i+n).join(" "));
+    return out.slice(0,3);
+  }
+  return chunks.length?chunks:[clean];
+}
+function speakNow(txt){
+  const lang=speechLang();
+  const chunks=splitForSpeech(txt);
+  const voice=pickVoice(lang);
+  chunks.forEach((chunk,i)=>{
+    const u=new SpeechSynthesisUtterance(chunk);
+    u.lang=lang; u.rate=0.9; u.pitch=1.0;
+    if(voice) u.voice=voice;
+    if(i>0) u.onstart=null;
+    speechSynthesis.speak(u);
+  });
+}
+function speak(txt){
+  if(!("speechSynthesis" in window)){ toast("TTS yok"); return; }
+  speechSynthesis.cancel();
+  const run=()=>speakNow(txt);
+  const voices=speechSynthesis.getVoices()||[];
+  if(voices.length) run();
+  else {
+    let done=false;
+    const once=()=>{ if(done) return; done=true; speechSynthesis.removeEventListener("voiceschanged",once); run(); };
+    speechSynthesis.addEventListener("voiceschanged",once);
+    setTimeout(once,600);
+  }
+}
+function playGuide(s){
+  const loc=L(s);
+  let txt=guideText(s);
+  if(loc.dialect){
+    // Dialect card is already kid-friendly; append so TTS covers ağız tip.
+    txt += ". " + loc.dialect;
+  }
+  speak(txt);
+  toast(t("guidePlaying"));
+}
+async function ensureNotifyPerm(){
+  if(!("Notification" in window)) return false;
+  if(Notification.permission==="granted") return true;
+  if(Notification.permission==="denied") return false;
+  const p=await Notification.requestPermission();
+  return p==="granted";
+}
+function notifyNear(stop){
+  if(!S.notify) return;
+  if(!("Notification" in window) || Notification.permission!=="granted") return;
+  try{
+    const title = t("nearToast").split("—")[0].trim() || t("nearToast");
+    const body = L(stop).name + " — " + t("openTasks");
+    new Notification(title,{ body, tag:"ce-near-"+stop.id, renotify:true });
+  }catch(e){}
+}
+
+/* ═══════════════════════ CAMERA ═══════════════════════ */
+let pendingTask=null, captureTok=0, liveStream=null;
+function insecureFile(){ return location.protocol==="file:"; }
+function capture(s,k){
+  if(insecureFile()){
+    pendingTask={s,k};
+    modal(`<p style="font-size:2.2rem">📷</p><p>${t("camFail")}</p>
+      <p class="muted small" style="margin-top:10px">Bu uygulamayı HTTPS adresinden açın (belediye sitesi veya güvenli sunucu). file:// ile çalışmaz.</p>
+      <button class="btn teal" style="margin-top:14px" id="mGal">${t("gallery")}</button>
+      <button class="btn ghost" style="margin-top:8px" id="mCancel">${t("cancel")}</button>`);
+    $("mGal").onclick=()=>{ closeModal(); pickGallery(); };
+    $("mCancel").onclick=()=>{ pendingTask=null; closeModal(); };
+    return;
+  }
+  pendingTask={s,k}; captureTok++;
+  const tok=captureTok;
+  // Canlı kamera (HTTPS/localhost) — yoksa dosya seçici
+  if(window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+    openLiveCam(s,k,tok).catch(()=>openFileCam(k,tok));
+  } else openFileCam(k,tok);
+}
+async function openLiveCam(s,k,tok){
+  const facing = k==="selfie" ? "user" : "environment";
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio:false,
+    video:{ facingMode:{ ideal:facing }, width:{ ideal:1280 }, height:{ ideal:720 } }
+  });
+  if(tok!==captureTok || !pendingTask){ stream.getTracks().forEach(t=>t.stop()); return; }
+  liveStream=stream;
+  modal(`<p class="muted small">${k==="selfie"?(L(s).photoSelfie||t("tSelfie")):(L(s).photoPlace||t("tPlace"))}</p>
+    <video id="liveVid" autoplay playsinline muted style="width:100%;border-radius:14px;background:#000;max-height:50vh;object-fit:cover"></video>
+    <button class="btn teal" style="margin-top:12px" id="mShot">📸 Çek</button>
+    <button class="btn ghost" style="margin-top:8px" id="mGal">${t("gallery")}</button>
+    <button class="btn ghost" style="margin-top:8px" id="mCancel">${t("cancel")}</button>`);
+  const v=$("liveVid"); v.srcObject=stream; try{ await v.play(); }catch(e){}
+  $("mShot").onclick=()=>{
+    try{
+      const c=document.createElement("canvas");
+      const w=v.videoWidth||1280, h=v.videoHeight||720;
+      const max=640, r=Math.min(1,max/Math.max(w,h));
+      c.width=Math.round(w*r); c.height=Math.round(h*r);
+      c.getContext("2d").drawImage(v,0,0,c.width,c.height);
+      stopLive(); closeModal();
+      const data=c.toDataURL("image/jpeg",0.6);
+      finishPhoto(data);
+    }catch(e){ toast(t("camFail")); openFileCam(k,tok); }
+  };
+  $("mGal").onclick=()=>{ stopLive(); closeModal(); pickGallery(); };
+  $("mCancel").onclick=()=>{ stopLive(); pendingTask=null; closeModal(); };
+}
+function stopLive(){
+  if(liveStream){ liveStream.getTracks().forEach(t=>t.stop()); liveStream=null; }
+}
+function openFileCam(k,tok){
+  const input=$(k==="place"?"camPlace":"camSelfie");
+  try{ input.value=""; }catch(e){}
+  input.onchange=()=>{
+    if(tok!==captureTok) return;
+    const f=input.files && input.files[0];
+    if(f) handleFile(f);
+    else camFallback();
+  };
+  try{ input.click(); }
+  catch(e){ camFallback(); return; }
+  // İptalde geri dönünce (dosya yoksa) yedek göster — erken tetikleme yapma
+  const onFocus=()=>{
+    window.removeEventListener("focus", onFocus);
+    setTimeout(()=>{
+      if(tok!==captureTok || !pendingTask) return;
+      if(!(input.files && input.files.length)) camFallback();
+    }, 1600);
+  };
+  window.addEventListener("focus", onFocus);
+}
+function pickGallery(){
+  if(!pendingTask) return;
+  const g=$("camGallery");
+  try{ g.value=""; }catch(e){}
+  g.onchange=()=>{ const f=g.files&&g.files[0]; if(f) handleFile(f); else pendingTask=null; };
+  try{ g.click(); }catch(e){ camFallback(); }
+}
+function camFallback(){
+  if(!pendingTask) return;
+  stopLive();
+  modal(`<p style="font-size:2.2rem">📷</p><p>${t("camFail")}</p>
+    <button class="btn teal" style="margin-top:14px" id="mGal">${t("gallery")}</button>
+    <button class="btn ghost" style="margin-top:8px" id="mCancel">${t("cancel")}</button>`);
+  $("mGal").onclick=()=>{ closeModal(); pickGallery(); };
+  $("mCancel").onclick=()=>{ pendingTask=null; closeModal(); };
+}
+function handleFile(file){
+  if(!file||!pendingTask) return;
+  const readerTok=++captureTok; // iptal eski focus timer
+  const task=pendingTask;
+  const img=new Image(); const url=URL.createObjectURL(file);
+  img.onload=()=>{
+    if(!pendingTask || pendingTask!==task){ URL.revokeObjectURL(url); return; }
+    const max=640, r=Math.min(1,max/Math.max(img.width,img.height));
+    const c=document.createElement("canvas"); c.width=Math.round(img.width*r); c.height=Math.round(img.height*r);
+    c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+    URL.revokeObjectURL(url);
+    finishPhoto(c.toDataURL("image/jpeg",0.6));
+  };
+  img.onerror=()=>{ URL.revokeObjectURL(url); toast("Fotoğraf okunamadı"); pendingTask=null; };
+  img.src=url;
+}
+function finishPhoto(data){
+  if(!pendingTask) return;
+  const {s,k}=pendingTask; pendingTask=null;
+  completeTask(s,k,data);
+}
+function completeTask(s,k,photoData){
+  const photoKey=s.id+"."+k;
+  const prevTask=!!(S.tasks[s.id]&&S.tasks[s.id][k]);
+  const prevPts=S.pts;
+  const hadPhoto=Object.prototype.hasOwnProperty.call(S.photos,photoKey);
+  const prevPhoto=hadPhoto?S.photos[photoKey]:null;
+  let stored=false;
+  if(photoData!=null){
+    if(Object.keys(S.photos).length>=PHOTO_MAX && !hadPhoto) stored=false;
+    else { S.photos[photoKey]=photoData; stored=true; }
+  }
+  S.tasks[s.id]=S.tasks[s.id]||{}; S.tasks[s.id][k]=true; S.pts+=10;
+  const done=stopDone(s); if(done) S.pts+=5;
+  if(!save()){
+    if(prevTask) S.tasks[s.id][k]=true; else if(S.tasks[s.id]){ delete S.tasks[s.id][k]; }
+    S.pts=prevPts;
+    if(hadPhoto) S.photos[photoKey]=prevPhoto; else delete S.photos[photoKey];
+  }
+  if(photoData!=null && !stored) toast(t("photoLimit"));
+  if(navigator.vibrate) navigator.vibrate([60,40,60]);
+  const sticker = STICKERS[s.id]||"🎫";
+  let badgeHtml="";
+  if(done){
+    const neu=newlyUnlockedBadges();
+    if(neu.length){
+      badgeHtml = neu.map(b=>`<p style="margin-top:10px;font-weight:800">${t("badgeNew")} ${b.ic} ${t(b.labelKey)}</p>`).join("");
+    }
+  }
+  const big = done ? sticker : "✅";
+  const title = done ? t("reward") : t("taskDone");
+  const needLine = done ? "" : `<p class="muted small" style="margin:4px 0 0">${t("stampNeed")}</p>`;
+  modal(`<span class="big-stamp">${big}</span><h2>${title}</h2><p class="muted" style="margin:6px 0">${L(s).name}</p>${needLine}
+    <p style="font-size:1.4rem;font-weight:700;color:var(--teal)">+10 ${t("pts")}${done?`<br><span style="color:var(--amber);font-size:1rem">${t("bonus")}</span>`:""}</p>
+    ${badgeHtml}
+    <button class="btn teal" style="margin-top:14px" id="mOk">${t("cont")}</button>`,"reward");
+  $("mOk").onclick=()=>{ closeModal(); renderStop(s); };
+}
+
+/* ═══════════════════════ PASSPORT ═══════════════════════ */
+function renderPassport(){
+  $("pPoints").textContent=S.pts; $("pStops").textContent=doneCount()+"/15";
+  const g=$("stampGrid"); g.innerHTML="";
+  const any=DATA.stops.some(s=>taskState(s.id,"place")||taskState(s.id,"selfie"));
+  $("stampEmpty").style.display=any?"none":"block";
+  DATA.stops.forEach((s,i)=>{
+    const done=stopDone(s);
+    const half=!done && (taskState(s.id,"place")||taskState(s.id,"selfie"));
+    const ph=S.photos[s.id+".selfie"]||S.photos[s.id+".place"];
+    const el=document.createElement("div");
+    el.className="stamp"+(done?" done":half?" half":"");
+    el.tabIndex=0;
+    const sticker=STICKERS[s.id]||"🎫";
+    if(done){
+      el.innerHTML=`${ph?`<img src="${ph}" alt="">`:""}<span class="sticker">${sticker}</span><span>${L(s).name}</span>`;
+    } else if(half){
+      el.innerHTML=`${ph?`<img src="${ph}" alt="">`:""}<span class="half-mark">1/2</span><span class="sticker">${sticker}</span><span>${L(s).name}</span>`;
+    } else {
+      el.innerHTML=`<span style="font-size:1.4rem">○</span><span>${L(s).name}</span>`;
+    }
+    el.onclick=()=>openStop(s); g.appendChild(el);
+  });
+  const br=$("badgeRow");
+  if(br){
+    br.innerHTML="";
+    BADGE_DEFS.forEach(b=>{
+      const on=badgeUnlocked(b);
+      const el=document.createElement("div");
+      el.className="badge"+(on?"":" lock");
+      el.innerHTML=`<span class="ic">${on?b.ic:"🔒"}</span><b>${t(b.labelKey)}</b>`;
+      br.appendChild(el);
+    });
+  }
+}
+$("shareBtn").onclick=async()=>{
+  const txt=fmt(t("shareText"),S.name||"Gezgin",S.pts,doneCount());
+  if(navigator.share){ try{ await navigator.share({text:txt,title:"Cebimdeki Eskişehir"}); }catch(e){} }
+  else { try{ await navigator.clipboard.writeText(txt); toast(t("copied")); }catch(e){ prompt("",txt); } }
+};
+
+/* ═══════════════════════ ROAD GAME ═══════════════════════ */
+let gMode="riddle", gPool=[], gIdx=0, gRound=0, gAnswered=false;
+document.querySelectorAll('[role=tab]').forEach(b=>b.onclick=()=>{ gMode=b.dataset.g; document.querySelectorAll('[role=tab]').forEach(x=>x.setAttribute("aria-selected",x===b)); newRound(); });
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function newRound(){ gPool=shuffle(gMode==="riddle"?DATA.riddles:gMode==="truth"?DATA.truth:DATA.idioms); gIdx=0; gRound=0; renderGame(); }
+function renderGame(){
+  $("gameScore").textContent=S.game+" "+t("pts");
+  if(!gPool.length){ newRound(); return; }
+  const c=$("gameCard"); gAnswered=false;
+  if(gIdx>=gPool.length){
+    c.innerHTML=`<div class="empty"><span>🔁</span><p>${t("roundDone")}</p><p class="small muted">${t("roundScore")}: <b style="color:var(--teal)">${gRound}</b></p></div><button class="btn teal" id="gShuffle">🔀 ${t("shuffle")}</button>`;
+    $("gShuffle").onclick=newRound; return;
+  }
+  const q=gPool[gIdx]; const prog=`<p class="small muted">${gIdx+1} / ${gPool.length}</p>`;
+  const stopLink=(id)=> id?`<button class="btn ghost sm" style="margin-top:10px" data-go="${id}">📍 ${t("goStop")}: ${L(DATA.stops.find(s=>s.id===id)).name}</button>`:"";
+  if(gMode==="riddle"){
+    const r=q[S.lang]||q.tr;
+    c.innerHTML=`${prog}<p class="q">${r.q}</p>
+      <label class="small muted" for="gIn">${t("typeAns")}</label>
+      <input type="text" id="gIn" autocomplete="off" autocapitalize="sentences" placeholder="…">
+      <button class="btn teal" style="margin-top:10px" id="gCheck">${t("checkAns")}</button>
+      <button class="btn ghost" style="margin-top:8px" id="gShow">${t("hintAns")}</button>
+      <div class="answer" id="gAns"><p id="gVerdict" style="font-weight:700"></p>
+        <p class="small muted" style="margin-top:6px">${S.lang==="de"?"Antwort:":S.lang==="en"?"Answer:":"Cevap:"} <b style="color:var(--teal)">${r.a}</b></p>
+        ${stopLink(q.stop)}
+        <button class="btn ghost" style="margin-top:12px" id="gNext">${t("next")}</button></div>`;
+    const norm=s=> (s||"").toLocaleLowerCase("tr-TR").normalize("NFD").replace(/\p{M}/gu,"").replace(/[^a-z0-9çğıöşü\s]/gi,"").replace(/\s+/g," ").trim();
+    const closeEnough=(guess,ans)=>{
+      const g=norm(guess), a=norm(ans);
+      if(!g) return false;
+      if(g===a) return true;
+      if(a.includes(g) && g.length>=Math.min(4,a.length)) return true;
+      if(g.includes(a) && a.length>=4) return true;
+      // ana kelime: "Kentpark plajı" → kentpark
+      const aw=a.split(" ").filter(w=>w.length>3);
+      return aw.length && aw.every(w=>g.includes(w));
+    };
+    const reveal=(ok)=>{
+      if(gAnswered) return; gAnswered=true;
+      $("gVerdict").textContent = ok ? ("✓ "+t("right")+" +5") : ("✗ "+t("wrong"));
+      $("gVerdict").style.color = ok ? "var(--teal)" : "var(--coral)";
+      if(ok) score(5);
+      $("gAns").classList.add("on");
+      $("gCheck").disabled=true; $("gShow").disabled=true; $("gIn").disabled=true;
+    };
+    $("gCheck").onclick=()=> reveal(closeEnough($("gIn").value, r.a));
+    $("gIn").onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); $("gCheck").click(); } };
+    $("gShow").onclick=()=> reveal(false); // ipucu = cevap açılır, puan yok
+    $("gNext").onclick=nextQ;
+  } else if(gMode==="truth"){
+    c.innerHTML=`${prog}<p class="q">${q[S.lang]||q.tr}</p><div class="two"><button class="btn teal" id="gT">✓ ${t("truth")}</button><button class="btn coral" id="gF">✗ ${t("fake")}</button></div>
+      <div class="answer" id="gAns"><p id="gVerdict" style="font-weight:700"></p><p class="small" style="margin-top:4px">${q[S.lang+"_x"]||q.tr_x}</p>${stopLink(q.stop)}<button class="btn ghost" style="margin-top:12px" id="gNext">${t("next")}</button></div>`;
+    const ans=(v)=>{ if(gAnswered) return; gAnswered=true; const ok=v===q.ok; $("gVerdict").textContent=(ok?"✓ "+t("right")+" +5":"✗ "+t("wrong")); $("gVerdict").style.color=ok?"var(--teal)":"var(--coral)"; if(ok) score(5); $("gAns").classList.add("on"); $("gT").disabled=$("gF").disabled=true; };
+    $("gT").onclick=()=>ans(true); $("gF").onclick=()=>ans(false); $("gNext").onclick=nextQ;
+  } else {
+    const d=q[S.lang]||q.tr;
+    c.innerHTML=`${prog}<p class="q">${d.q}</p><div class="opts" id="gOpts">${shuffle(d.opts.map((o,i)=>({o,i}))).map(x=>`<button data-i="${x.i}">${x.o}</button>`).join("")}</div>
+      <div class="answer" id="gAns"><p class="small">${d.m}</p>${stopLink(q.stop)}<button class="btn ghost" style="margin-top:12px" id="gNext">${t("next")}</button></div>`;
+    $("gOpts").querySelectorAll("button").forEach(b=>b.onclick=()=>{ if(gAnswered) return; gAnswered=true; const ok=+b.dataset.i===d.a; b.classList.add(ok?"ok":"no"); if(!ok) $("gOpts").querySelector(`[data-i="${d.a}"]`).classList.add("ok"); if(ok) score(5); $("gAns").classList.add("on"); });
+    $("gNext").onclick=nextQ;
+  }
+  c.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>openStop(DATA.stops.find(s=>s.id===b.dataset.go)));
+}
+function score(n){ S.game+=n; S.pts+=n; gRound+=n; save(); $("gameScore").textContent=S.game+" "+t("pts"); }
+function nextQ(){ gIdx++; renderGame(); }
+
+/* ═══════════════════════ ME / SETTINGS ═══════════════════════ */
+function renderMe(){
+  $("nameIn").value=S.name; $("mPoints").textContent=S.pts; $("mPhotos").textContent=Object.keys(S.photos).length;
+  $("langBtn").textContent=S.lang==="tr"?"EN":S.lang==="en"?"DE":"TR"; $("bigSw").setAttribute("aria-checked",S.big); $("simSw").setAttribute("aria-checked",S.sim); const nsw=$("notifySw"); if(nsw) nsw.setAttribute("aria-checked",!!S.notify);
+  const ios=/iphone|ipad/i.test(navigator.userAgent)&&!window.MSStream;
+  const standalone=window.matchMedia("(display-mode: standalone)").matches||!!window.navigator.standalone;
+  const ir=$("installRow"), idr=$("installDoneRow");
+  if(standalone){
+    if(ir) ir.style.display="none";
+    if(idr) idr.style.display="flex";
+    $("installHint").style.display="none";
+  } else {
+    if(ir) ir.style.display="flex";
+    if(idr) idr.style.display="none";
+    $("installHint").style.display=(ios&&!window.navigator.standalone)?"block":"none";
+    $("installBtn").disabled=!deferredInstall&&!ios;
+  }
+  updateNetChip();
+  const gd=$("gpsDetailText");
+  if(gd){
+    if(S.sim){
+      let line=t("gpsSimHint");
+      if(pos){
+        const stopsD=DATA.stops.map(s=>({s,d:distTo(s)})).sort((a,b)=>a.d-b.d);
+        const n=stopsD[0];
+        const open=isOpen(n.s);
+        line += "\n"+pos.lat.toFixed(5)+", "+pos.lng.toFixed(5)+" · ±"+(posAcc??"—")+" m";
+        line += "\n"+L(n.s).name+" · "+fmtDist(n.d)+(open?" · görevler açık":" · kilitli");
+      }
+      gd.textContent=line;
+    } else if(!pos){
+      const map={wait:t("gpsWait"),denied:t("gpsDenied"),off:t("gpsOff"),on:t("gpsNoFix")};
+      gd.textContent=map[gpsState]||t("gpsNoFix");
+    } else {
+      const stopsD=DATA.stops.map(s=>({s,d:distTo(s)})).sort((a,b)=>a.d-b.d);
+      const n=stopsD[0];
+      const open=isOpen(n.s);
+      let line=pos.lat.toFixed(5)+", "+pos.lng.toFixed(5);
+      line += "\n±"+(posAcc!=null?posAcc+" m":"—");
+      line += "\n"+L(n.s).name+" · "+fmtDist(n.d)+(open?" · görevler açık":" · kilitli");
+      if(posAcc!=null && posAcc>150) line += "\n"+fmt(t("gpsAccWarn"),posAcc);
+      gd.textContent=line;
+    }
+  }
+}
+$("nameSave").onclick=()=>{ S.name=$("nameIn").value.trim(); save(); toast(t("saved")); };
+$("langBtn").onclick=()=>{ S.lang=S.lang==="tr"?"en":S.lang==="en"?"de":"tr"; save(); applyLang(); renderMe(); };
+$("bigSw").onclick=()=>{ S.big=!S.big; save(); applyBig(); renderMe(); };
+$("simSw").onclick=()=>{ S.sim=!S.sim; save(); if(!S.sim){ pos=null; posAcc=null; nearId=null; } startGPS(); renderMe(); toast(S.sim?"Demo: Keşfet → durak → Işınlan":"GPS"); };
+$("notifySw").onclick=async()=>{
+  if(!S.notify){
+    const ok=await ensureNotifyPerm();
+    if(!ok){ S.notify=false; save(); renderMe(); toast(t("notifyDenied")); return; }
+    S.notify=true; save(); renderMe(); toast(t("notifyOn"));
+  } else {
+    S.notify=false; save(); renderMe();
+  }
+};
+$("resetBtn").onclick=()=>{ modal(`<p style="font-size:2rem">🗑️</p><p>${t("resetQ")}</p><button class="btn coral" style="margin-top:14px" id="mYes">${t("yes")}</button><button class="btn ghost" style="margin-top:8px" id="mNo">${t("cancel")}</button>`); $("mYes").onclick=()=>{ const keep={lang:S.lang,big:S.big,onboarded:true,lastTab:"explore",lastStopId:null}; localStorage.removeItem(KEY); S=Object.assign(load(),keep); save(); closeModal(); renderMe(); toast("OK"); }; $("mNo").onclick=closeModal; };
+window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferredInstall=e; $("installBtn").disabled=false; });
+$("installBtn").onclick=async()=>{ if(deferredInstall){ deferredInstall.prompt(); await deferredInstall.userChoice; deferredInstall=null; } else $("installHint").style.display="block"; };
+
+function applyLang(){ document.documentElement.lang=S.lang; document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n)); renderGpsChip(); const on=document.querySelector(".screen.on").id.slice(2); if(on==="stop"&&current) renderStop(current); else ({explore:renderExplore,passport:renderPassport,bus:renderGame,me:renderMe})[on]?.(); }
+function applyBig(){ document.body.classList.toggle("big",S.big); }
+
+/* ═══════════════════════ MODAL / TOAST ═══════════════════════ */
+function modal(html,cls){ const m=$("modal"), b=$("modalBox"); b.className="modal"+(cls?" "+cls:""); b.innerHTML=html; m.classList.add("on"); const f=b.querySelector("button"); f&&f.focus(); }
+function closeModal(){ $("modal").classList.remove("on"); }
+let toastT; function toast(msg){ const el=$("toast"); el.textContent=msg; el.classList.add("on"); clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove("on"),2600); }
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
+
+/* ═══════════════════════ ONBOARDING ═══════════════════════ */
+let obStep=0;
+function renderOb(){
+  const steps=[["ob1t","ob1"],["ob2t","ob2"],["ob3t","ob3"]];
+  const [tt,bb]=steps[obStep];
+  $("obBody").innerHTML=`<p style="font-size:2.4rem">${["🚌","🎫","📍"][obStep]}</p><h2 id="obTitle">${t(tt)}</h2><p class="muted" style="margin-top:8px">${t(bb)}</p>${obStep===2?`<label class="small muted" for="obName" style="display:block;margin-top:14px">${t("obName")}</label><input type="text" id="obName" maxlength="24" placeholder="Ayşe" value="${S.name}">`:""}
+    ${obStep===0?`<button class="btn ghost sm" style="margin-top:12px" id="obLang">${S.lang==="tr"?"English":S.lang==="en"?"Deutsch":"Türkçe"}</button>`:""}`;
+  $("obDots").innerHTML=steps.map((_,i)=>`<i class="${i===obStep?"on":""}"></i>`).join("");
+  $("obNext").textContent=obStep===2?t("start"):t("cont");
+  const lb=$("obLang"); if(lb) lb.onclick=()=>{ S.lang=S.lang==="tr"?"en":S.lang==="en"?"de":"tr"; save(); applyLang(); renderOb(); };
+}
+$("obNext").onclick=()=>{ if(obStep<2){ obStep++; renderOb(); } else finishOb(); };
+$("obSkip").onclick=finishOb;
+function finishOb(){ const n=$("obName"); if(n) S.name=n.value.trim(); S.onboarded=true; S.lastTab="explore"; S.lastStopId=null; save(); $("ob").classList.remove("on"); startGPS(); show("explore"); }
+
+/* ═══════════════════════ PWA ═══════════════════════ */
+$("manifestLink").href="./manifest.json";
+function updateNetChip(){
+  const el=$("netChip"); if(!el) return;
+  el.textContent=navigator.onLine?t("onlineNow"):t("offlineNow");
+  el.classList.toggle("teal", navigator.onLine);
+}
+window.addEventListener("online", ()=>{ updateNetChip(); toast(t("onlineNow")); });
+window.addEventListener("offline", ()=>{ updateNetChip(); toast(t("offlineNow")); });
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("./sw.js", {scope:"./"})
+      .then(reg=>{
+        const promptUpdate=()=>{ toast(t("updateReady")); };
+        if(reg.waiting) promptUpdate();
+        reg.addEventListener("updatefound", ()=>{
+          const w=reg.installing;
+          if(!w) return;
+          w.addEventListener("statechange", ()=>{
+            if(w.state==="installed" && navigator.serviceWorker.controller) promptUpdate();
+          });
+        });
+        // Chrome needs an active SW for installability — re-enable install after register
+        if($("installBtn") && deferredInstall) $("installBtn").disabled=false;
+      }).catch(()=>{});
+  });
+  navigator.serviceWorker.addEventListener("controllerchange", ()=>{ /* new SW took control */ });
+}
+
+/* ═══════════════════════ INIT ═══════════════════════ */
+applyBig(); applyLang(); updateNetChip();
+if("speechSynthesis" in window){ try{ speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged=()=>speechSynthesis.getVoices(); }catch(e){} }
+if(!S.onboarded){ $("ob").classList.add("on"); renderOb(); show("explore"); }
+else {
+  startGPS();
+  const tab=S.lastTab||"explore";
+  if(tab==="stop" && S.lastStopId){
+    const st=DATA.stops.find(x=>x.id===S.lastStopId);
+    if(st) openStop(st);
+    else show("explore");
+  } else if(tab==="explore"||tab==="passport"||tab==="bus"||tab==="me"){
+    show(tab);
+  } else {
+    show("explore");
+  }
+}
+</script>
+</body>
+</html>
