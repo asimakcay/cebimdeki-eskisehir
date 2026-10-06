@@ -1116,7 +1116,7 @@ function capture(s,k){
   const tok=captureTok;
   // Canlı kamera (HTTPS/localhost) — yoksa dosya seçici
   if(window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
-    openLiveCam(s,k,tok).catch(()=>openFileCam(k,tok));
+    openLiveCam(s,k,tok).catch(()=>camFallback());
   } else openFileCam(k,tok);
 }
 async function openLiveCam(s,k,tok){
@@ -1182,9 +1182,11 @@ function pickGallery(){
 function camFallback(){
   if(!pendingTask) return;
   stopLive();
-  modal(`<p style="font-size:2.2rem">📷</p><p>${t("camFail")}</p>
-    <button class="btn teal" style="margin-top:14px" id="mGal">${t("gallery")}</button>
+  modal(`<p style="font-size:2.2rem">📷</p>
+    <button class="btn teal" style="margin-top:14px" id="mCam">📷 Kamera ile çek</button>
+    <button class="btn ghost" style="margin-top:8px" id="mGal">${t("gallery")}</button>
     <button class="btn ghost" style="margin-top:8px" id="mCancel">${t("cancel")}</button>`);
+  $("mCam").onclick=()=>{ const k=pendingTask&&pendingTask.k; closeModal(); if(k){ captureTok++; openFileCam(k,captureTok); } };
   $("mGal").onclick=()=>{ closeModal(); pickGallery(); };
   $("mCancel").onclick=()=>{ pendingTask=null; closeModal(); };
 }
