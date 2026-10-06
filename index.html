@@ -1091,7 +1091,10 @@ function notifyNear(stop){
   try{
     const title = t("nearToast").split("—")[0].trim() || t("nearToast");
     const body = L(stop).name + " — " + t("openTasks");
-    new Notification(title,{ body, tag:"ce-near-"+stop.id, renotify:true });
+    const opts={ body, tag:"ce-near-"+stop.id, renotify:true, icon:"icons/icon-192.png" };
+    if("serviceWorker" in navigator && navigator.serviceWorker.controller){
+      navigator.serviceWorker.ready.then(r=>r.showNotification(title,opts)).catch(()=>{ try{ new Notification(title,opts); }catch(e){} });
+    } else { new Notification(title,opts); }
   }catch(e){}
 }
 
